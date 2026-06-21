@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<style>
+* { margin:0; padding:0; }
+html, body { width:100%; height:100%; overflow:hidden; background:transparent; }
+canvas { width:100%; height:100%; }
+#bubble {
+    position:fixed;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    max-width:85%;
+    background:rgba(255,255,255,0.92);
+    color:#2a2a3e;
+    padding:8px 12px;
+    border-radius:12px;
+    font-size:12px;
+    line-height:1.5;
+    box-shadow:0 2px 8px rgba(0,0,0,0.3);
+    opacity:0;
+    transition:opacity 0.4s;
+    pointer-events:none;
+    text-align:center;
+    z-index:100;
+    font-family:'Microsoft YaHei',sans-serif;
+}
+#bubble.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="bubble"></div>
+<canvas id="canvas"></canvas>
+
+<script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+<script>
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/oox5185-hash/meruru@main/meruru.model3.json';
+
+const app = new PIXI.Application({
+    view: document.getElementById('canvas'),
+    transparent: true,
+    backgroundAlpha: 0,
+    resizeTo: window,
+    antialias: true
+});
+
+let model = null;
+
+async function loadModel() {
+    try {
+        model = await PIXI.live2d.Live2DModel.from(MODEL_URL);
+        app.stage.addChild(model);
+
+        const scale = Math.min(window.innerWidth, window.innerHeight) * 0.0012;
+        model.scale.set(scale);
+        model.x = window.innerWidth / 2;
+        model.y = window.innerHeight * 0.55;
+        model.anchor.set(0.5, 0.5);
+
+        // 停止内置动画
+        model.internalModel.motionManager.stopAllMotions();
+        model.internalModel.motionManager.expressionManager = null;
+
+        startBreathing();
+    } catch(e) {
+        showBubble('加载失败...'+e.message);
+    }
+}
+
+// 简单呼吸动画
+function startBreathing() {
+    if (!model || !model.internalModel) return;
+    const core = model.internalModel.coreModel;
+
+    function animate() {
+        const t = Date.now() / 1000;
+        const breathVal = Math.sin(t * 1.5) * 0.5 + 0.5;
+
+        try {
+            const idx = core._model.parameters.ids.indexOf('ParamBreath');
+            if (idx >= 0) core._model.parameters.values[idx] = breathVal;
+        } catch(e) {}
+
+        requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// 气泡
+let bubbleTimer = null;
+function showBubble(text) {
+    const b = document.getElementById('bubble');
+    b.textContent = text;
+    b.classList.add('show');
+
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => {
+        b.style.transition = 'opacity 1s';
+        b.classList.remove('show');
+        setTimeout(() => { b.style.transition = 'opacity 0.4s'; }, 1000);
+    }, 3000);
+}
+
+// Android点击时调用
+const petLines = [
+    '主人~怎么了？',
+    '嗯？你戳我干嘛……',
+    '那、那个……有什么事吗？',
+    '唔……不要突然碰我啦……',
+    '主人想我了吗？……才、才没有自作多情呢！',
+    '今天也要加油哦，主人！',
+    '我一直都在这里的……',
+    '主人的手……好温暖……',
+    '哼，就知道欺负我……',
+    '要是能帮到主人就好了……'
+];
+
+function onPetClicked() {
+    const line = petLines[Math.floor(Math.random() * petLines.length)];
+    showBubble(line);
+}
+
+window.addEventListener('load', loadModel);
+</script>
+</body>
+</html>
+
