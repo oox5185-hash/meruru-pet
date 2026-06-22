@@ -27,7 +27,7 @@ public class FloatingService extends Service {
     private WindowManager.LayoutParams layoutParams;
 
     private static final String CHANNEL_ID = "meruru_channel";
-    private static final int PET_SIZE_DP = 250;
+    private static final int PET_SIZE_DP = 180;
 
     private int initialX, initialY;
     private float initialTouchX, initialTouchY;
@@ -53,6 +53,8 @@ public class FloatingService extends Service {
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
+        ws.setAllowFileAccessFromFileURLs(true);
+        ws.setAllowUniversalAccessFromFileURLs(true);
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.setWebViewClient(new WebViewClient());
@@ -73,33 +75,36 @@ public class FloatingService extends Service {
         layoutParams.x = 100;
         layoutParams.y = 400;
 
-        webView.setOnTouchListener((v, event) -> {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    initialX = layoutParams.x;
-                    initialY = layoutParams.y;
-                    initialTouchX = event.getRawX();
-                    initialTouchY = event.getRawY();
-                    touchDownTime = System.currentTimeMillis();
-                    hasMoved = false;
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    int dx = (int)(event.getRawX() - initialTouchX);
-                    int dy = (int)(event.getRawY() - initialTouchY);
-                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                        hasMoved = true;
-                        layoutParams.x = initialX + dx;
-                        layoutParams.y = initialY + dy;
-                        windowManager.updateViewLayout(webView, layoutParams);
-                    }
-                    return true;
-                case MotionEvent.ACTION_UP:
-                    if (!hasMoved && System.currentTimeMillis() - touchDownTime < 300) {
-                        webView.evaluateJavascript("onPetClicked()", null);
-                    }
-                    return true;
+        webView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialX = layoutParams.x;
+                        initialY = layoutParams.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        touchDownTime = System.currentTimeMillis();
+                        hasMoved = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        int dx = (int)(event.getRawX() - initialTouchX);
+                        int dy = (int)(event.getRawY() - initialTouchY);
+                        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                            hasMoved = true;
+                            layoutParams.x = initialX + dx;
+                            layoutParams.y = initialY + dy;
+                            windowManager.updateViewLayout(webView, layoutParams);
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        if (!hasMoved && System.currentTimeMillis() - touchDownTime < 300) {
+                            webView.evaluateJavascript("onPetClicked()", null);
+                        }
+                        return true;
+                }
+                return false;
             }
-            return false;
         });
 
         windowManager.addView(webView, layoutParams);
@@ -131,8 +136,8 @@ public class FloatingService extends Service {
     @Override
     public void onDestroy() {
         if (webView != null) {
-            webView.destroy();
             windowManager.removeView(webView);
+            webView.destroy();
         }
         super.onDestroy();
     }
