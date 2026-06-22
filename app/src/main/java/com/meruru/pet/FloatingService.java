@@ -27,7 +27,7 @@ public class FloatingService extends Service {
     private WindowManager.LayoutParams layoutParams;
 
     private static final String CHANNEL_ID = "meruru_channel";
-    private static final int PET_SIZE_DP = 220;
+    private static final int PET_SIZE_DP = 280;
 
     private int initialX, initialY;
     private float initialTouchX, initialTouchY;
