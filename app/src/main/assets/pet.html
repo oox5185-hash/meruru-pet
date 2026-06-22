@@ -5,56 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>梅露露</title>
     <style>
-        /* ===== 悬浮窗模式适配（优先级最高） ===== */
-        body, #bg-layer {
+        /* ===== 悬浮窗强制透明 ===== */
+        body, html, #bg-layer {
             background: transparent !important;
         }
         #bg-layer {
             display: none !important;
         }
-        .status-bar,
-        .top-buttons,
-        .input-bar,
-        .toggle-input-btn,
-        #pet-btn,
-        #pet-panel,
-        .loading-tip,
-        .overlay {
+        .status-bar, .top-buttons, .input-bar, .toggle-input-btn,
+        #pet-btn, #pet-panel, .loading-tip, .overlay {
             display: none !important;
         }
         .speech-bubble {
             position: fixed !important;
             right: auto !important;
             left: 50% !important;
-            top: 3% !important;
+            bottom: 2% !important;
+            top: auto !important;
             transform: translateX(-50%) !important;
-            max-width: 90% !important;
-            font-size: 11px !important;
-            padding: 6px 10px !important;
+            max-width: 95% !important;
+            font-size: 10px !important;
+            padding: 5px 8px !important;
             z-index: 100 !important;
-            border-radius: 10px !important;
-            background: rgba(255,255,255,0.75) !important;
+            border-radius: 8px !important;
+            background: rgba(255,255,255,0.7) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+            line-height: 1.4 !important;
+            pointer-events: none !important;
         }
         .speech-bubble::after {
             display: none !important;
         }
 
-        /* ===== 原始CSS ===== */
+        /* ===== 基础CSS ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
-
         html, body {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #1a1a2e;
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
         }
-
         #live2d-canvas {
             position: fixed;
             top: 0;
@@ -65,54 +58,29 @@
             opacity: 0;
             transition: opacity 0.5s ease;
         }
-
         #live2d-canvas.ready {
             opacity: 1;
         }
-
-        #bg-layer {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
-        }
-
         .speech-bubble {
             position: fixed;
             right: 5%;
             top: 25%;
             z-index: 15;
             max-width: 45%;
-            min-width: 140px;
+            min-width: 80px;
             background: rgba(255,255,255,0.95);
             color: #2a2a3e;
-            padding: 14px 18px;
-            border-radius: 18px;
-            font-size: 15px;
-            line-height: 1.6;
-            box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.5;
             opacity: 0;
             pointer-events: none;
-            transform: translateX(10px);
-            transition: opacity 0.4s ease, transform 0.4s ease;
+            transition: opacity 0.4s ease;
         }
-
         .speech-bubble.show {
             opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
         }
-
-        .speech-bubble::after {
-            content: '';
-            position: absolute;
-            left: -10px;
-            top: 30px;
-            border-top: 10px solid transparent;
-            border-bottom: 10px solid transparent;
-            border-right: 12px solid rgba(255,255,255,0.95);
-        }
-
         .loading-tip {
             position: fixed;
             left: 50%;
@@ -120,35 +88,22 @@
             transform: translate(-50%, -50%);
             z-index: 30;
             color: rgba(255,255,255,0.7);
-            font-size: 14px;
+            font-size: 12px;
             text-align: center;
             background: rgba(0,0,0,0.5);
-            padding: 16px 24px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            border-radius: 10px;
         }
-
         .loading-tip.hidden {
             display: none;
         }
-
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 4px;
-            background: #888;
-            vertical-align: middle;
-        }
-        .status-dot.ok { background: #7fdbca; }
-        .status-dot.err { background: #ff6b6b; }
     </style>
 </head>
 <body>
 
 <div id="bg-layer"></div>
 <canvas id="live2d-canvas"></canvas>
-<div class="loading-tip" id="loadingTip">正在加载梅露露……</div>
+<div class="loading-tip" id="loadingTip">加载中……</div>
 <div class="speech-bubble" id="speechBubble"></div>
 <div class="status-bar">
     <div class="affection-badge" id="affectionBadge">♡ 0</div>
@@ -163,33 +118,45 @@
 <script>
 // ==================== 数据存储系统 ====================
 
-const STORE = {
-    settings: 'meruru_pet_settings',
-    history: 'meruru_pet_history',
-    affection: 'meruru_pet_affection',
-    mood: 'meruru_pet_mood'
+var STORE = {
+    settings: 'meruru_settings',
+    history: 'meruru_history',
+    affection: 'meruru_affection',
+    mood: 'meruru_mood'
 };
 
-const DEFAULT_MODEL_URL = 'https://raw.githubusercontent.com/oox5185-hash/meruru/main/Meruru%20-%20Model%20-%20Mark.model3.json';
+var DEFAULT_MODEL_URL = 'https://raw.githubusercontent.com/oox5185-hash/meruru/main/Meruru%20-%20Model%20-%20Mark.model3.json';
 
-const DEFAULT_SETTINGS = {
+var DEFAULT_SETTINGS = {
     apiUrl: '',
     apiKey: '',
     model: 'gpt-4o-mini',
     live2dUrl: DEFAULT_MODEL_URL,
     greetInterval: 5,
     idleInterval: 8,
-    modelScale: 0.15,
+    modelScale: 0.08,
     modelX: 0.5,
-    modelY: 0.55
+    modelY: 0.5
 };
 
 function getSettings() {
     try {
-        const data = localStorage.getItem(STORE.settings);
-        if (data) return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(data));
+        var data = localStorage.getItem(STORE.settings);
+        if (data) {
+            var parsed = JSON.parse(data);
+            var result = {};
+            for (var k in DEFAULT_SETTINGS) result[k] = DEFAULT_SETTINGS[k];
+            for (var k2 in parsed) result[k2] = parsed[k2];
+            // 悬浮窗强制覆盖模型大小和位置
+            result.modelScale = 0.08;
+            result.modelX = 0.5;
+            result.modelY = 0.5;
+            return result;
+        }
     } catch(e) {}
-    return Object.assign({}, DEFAULT_SETTINGS);
+    var def = {};
+    for (var k3 in DEFAULT_SETTINGS) def[k3] = DEFAULT_SETTINGS[k3];
+    return def;
 }
 
 function saveSettingsData(s) {
@@ -198,7 +165,7 @@ function saveSettingsData(s) {
 
 function getHistory() {
     try {
-        const data = localStorage.getItem(STORE.history);
+        var data = localStorage.getItem(STORE.history);
         return data ? JSON.parse(data) : [];
     } catch(e) { return []; }
 }
@@ -208,8 +175,8 @@ function saveHistory(history) {
 }
 
 function pushHistory(role, content) {
-    const h = getHistory();
-    h.push({ role, content, time: Date.now() });
+    var h = getHistory();
+    h.push({ role: role, content: content, time: Date.now() });
     saveHistory(h);
 }
 
@@ -227,22 +194,16 @@ function addAffection(amount) {
 }
 
 function updateAffectionBadge() {
-    const badge = document.getElementById('affectionBadge');
+    var badge = document.getElementById('affectionBadge');
     if (!badge) return;
-    const a = getAffection();
-    let hearts = '♡';
-    if (a >= 100) hearts = '♥♥♥';
-    else if (a >= 60) hearts = '♥♥';
-    else if (a >= 30) hearts = '♥';
-    badge.textContent = hearts + ' ' + a;
 }
 </script>
 
 <script>
 // ==================== 心情系统 ====================
 
-let currentMood = 50;
-let moodDecayTimer = null;
+var currentMood = 50;
+var moodDecayTimer = null;
 
 function getMoodInfo(mood) {
     if (mood >= 80) return { emoji: '😊', name: '很开心', emotion: 'happy' };
@@ -255,18 +216,15 @@ function getMoodInfo(mood) {
 }
 
 function updateMoodBadge() {
-    const badge = document.getElementById('moodBadge');
+    var badge = document.getElementById('moodBadge');
     if (!badge) return;
-    const info = getMoodInfo(currentMood);
-    badge.textContent = info.emoji + ' ' + info.name + ' (' + Math.round(currentMood) + ')';
 }
 
 function changeMood(delta) {
     currentMood = Math.max(0, Math.min(100, currentMood + delta));
-    updateMoodBadge();
     saveMoodData();
     if (currentEmotion === 'neutral') {
-        const info = getMoodInfo(currentMood);
+        var info = getMoodInfo(currentMood);
         currentEmotion = info.emotion;
     }
 }
@@ -280,10 +238,10 @@ function saveMoodData() {
 
 function loadMoodData() {
     try {
-        const data = JSON.parse(localStorage.getItem(STORE.mood));
+        var data = JSON.parse(localStorage.getItem(STORE.mood));
         if (data && data.value !== undefined) {
             currentMood = data.value;
-            const hours = (Date.now() - data.time) / (1000 * 60 * 60);
+            var hours = (Date.now() - data.time) / (1000 * 60 * 60);
             if (hours > 2) {
                 currentMood = currentMood + (50 - currentMood) * Math.min(hours / 10, 0.8);
             }
@@ -291,21 +249,19 @@ function loadMoodData() {
     } catch(e) {
         currentMood = 50;
     }
-    updateMoodBadge();
 }
 
 function startMoodDecay() {
     moodDecayTimer = setInterval(function() {
-        const drift = (Math.random() - 0.55) * 5;
-        const regression = (50 - currentMood) * 0.02;
+        var drift = (Math.random() - 0.55) * 5;
+        var regression = (50 - currentMood) * 0.02;
         currentMood = Math.max(0, Math.min(100, currentMood + drift + regression));
-        updateMoodBadge();
         saveMoodData();
     }, 30000);
 }
 
 function applyTimeMoodEffect() {
-    const hour = new Date().getHours();
+    var hour = new Date().getHours();
     if (hour >= 1 && hour < 5) changeMood(-3);
     else if (hour >= 6 && hour < 9) changeMood(+2);
     else if (hour >= 22) changeMood(-2);
@@ -315,23 +271,23 @@ function applyTimeMoodEffect() {
 <script>
 // ==================== Live2D 加载 ====================
 
-let live2dApp = null;
-let live2dModel = null;
-let currentEmotion = 'neutral';
+var live2dApp = null;
+var live2dModel = null;
+var currentEmotion = 'neutral';
 
 async function initLive2D() {
-    const settings = getSettings();
+    var settings = getSettings();
 
     if (typeof PIXI === 'undefined' || !PIXI.live2d) {
-        showLoadingTip('Live2D引擎加载失败……');
+        showLoadingTip('引擎加载失败');
         return;
     }
 
     try {
-        const canvas = document.getElementById('live2d-canvas');
-        const dpr = window.devicePixelRatio || 1;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        var canvas = document.getElementById('live2d-canvas');
+        var dpr = window.devicePixelRatio || 1;
+        var width = window.innerWidth;
+        var height = window.innerHeight;
 
         canvas.width = width * dpr;
         canvas.height = height * dpr;
@@ -352,14 +308,14 @@ async function initLive2D() {
         await loadModel(settings.live2dUrl);
     } catch(e) {
         console.error('Live2D init failed:', e);
-        showLoadingTip('加载出错……' + e.message);
+        showLoadingTip('加载出错');
     }
 }
 
 async function loadModel(url) {
-    if (!url) { showLoadingTip('没有设置模型地址'); return; }
+    if (!url) { showLoadingTip('无模型地址'); return; }
 
-    showLoadingTip('正在加载梅露露……');
+    showLoadingTip('加载中……');
     document.getElementById('live2d-canvas').classList.remove('ready');
 
     try {
@@ -387,13 +343,11 @@ async function loadModel(url) {
         live2dModel.visible = true;
         document.getElementById('live2d-canvas').classList.add('ready');
         hideLoadingTip();
-        setModelStatus(true);
         startAutoAnimation();
 
     } catch(e) {
         console.error('Model load failed:', e);
-        showLoadingTip('模型加载失败……' + (e.message || ''));
-        setModelStatus(false);
+        showLoadingTip('模型加载失败');
     }
 }
 
@@ -433,9 +387,9 @@ function waitFrames(n) {
 function positionModel() {
     if (!live2dModel) return;
     var settings = getSettings();
-    var scale = parseFloat(settings.modelScale) || 0.15;
+    var scale = parseFloat(settings.modelScale) || 0.08;
     var xRatio = parseFloat(settings.modelX) || 0.5;
-    var yRatio = parseFloat(settings.modelY) || 0.55;
+    var yRatio = parseFloat(settings.modelY) || 0.5;
     live2dModel.scale.set(scale);
     live2dModel.anchor.set(0.5, 0.5);
     live2dModel.x = window.innerWidth * xRatio;
@@ -447,16 +401,11 @@ function setEmotion(emotion) {
     currentEmotion = emotion || 'neutral';
 }
 
-function playIdleMotion() { return; }
+function setModelStatus(ok) {}
 
-function setModelStatus(ok) {
-    var dot = document.getElementById('modelStatusDot');
-    if (dot) dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
-}
-
-function showLoadingTip(html) {
+function showLoadingTip(text) {
     var tip = document.getElementById('loadingTip');
-    if (tip) { tip.innerHTML = html; tip.classList.remove('hidden'); }
+    if (tip) { tip.textContent = text; tip.classList.remove('hidden'); }
 }
 
 function hideLoadingTip() {
@@ -642,7 +591,6 @@ function stopTalking() {
     autoAnim.isTalking = false;
 }
 </script>
-
 <script>
 // ==================== 天气系统 ====================
 
@@ -725,29 +673,11 @@ async function fetchWeather() {
             loaded: true
         };
 
-        updateWeatherBadge();
         applyWeatherMoodEffect();
 
     } catch(e) {
         console.error('Weather fetch failed:', e);
-        weatherData = {
-            city: '未知',
-            temp: '--',
-            condition: '获取失败',
-            icon: '❓',
-            loaded: false
-        };
-        updateWeatherBadge();
-    }
-}
-
-function updateWeatherBadge() {
-    var badge = document.getElementById('weatherBadge');
-    if (!badge) return;
-    if (weatherData.loaded) {
-        badge.textContent = weatherData.icon + ' ' + weatherData.city + ' ' + weatherData.temp + '°C ' + weatherData.condition;
-    } else {
-        badge.textContent = weatherData.icon + ' ' + weatherData.condition;
+        weatherData = { city: '未知', temp: '--', condition: '获取失败', icon: '❓', loaded: false };
     }
 }
 
@@ -756,19 +686,12 @@ function applyWeatherMoodEffect() {
     var cond = weatherData.condition;
     var temp = parseInt(weatherData.temp);
 
-    if (cond.indexOf('晴') >= 0 && temp >= 15 && temp <= 28) {
-        changeMood(+5);
-    } else if (cond.indexOf('雨') >= 0) {
-        changeMood(-3);
-    } else if (cond.indexOf('雪') >= 0) {
-        changeMood(+3);
-    } else if (temp > 35) {
-        changeMood(-4);
-    } else if (temp < 0) {
-        changeMood(-2);
-    } else if (cond.indexOf('雷') >= 0) {
-        changeMood(-5);
-    }
+    if (cond.indexOf('晴') >= 0 && temp >= 15 && temp <= 28) changeMood(+5);
+    else if (cond.indexOf('雨') >= 0) changeMood(-3);
+    else if (cond.indexOf('雪') >= 0) changeMood(+3);
+    else if (temp > 35) changeMood(-4);
+    else if (temp < 0) changeMood(-2);
+    else if (cond.indexOf('雷') >= 0) changeMood(-5);
 }
 
 function getWeatherPrompt() {
@@ -903,7 +826,7 @@ async function callAI(userMessage) {
     var settings = getSettings();
 
     if (!settings.apiUrl || !settings.apiKey) {
-        return '[emotion:worry][mood:0] 那、那个……主人，请先在设置里填写API信息……我、我才能正常和你说话……';
+        return '[emotion:worry][mood:0] 那、那个……主人，请先在完整界面设置API……';
     }
 
     var messages = [];
@@ -938,20 +861,18 @@ async function callAI(userMessage) {
         });
 
         if (!response.ok) {
-            var errText = await response.text();
-            console.error('API Error:', response.status, errText);
-            return '[emotion:cry][mood:-2] 呜呜……出错了……对不起，我、我好像暂时无法回应……（错误：' + response.status + '）';
+            return '[emotion:cry][mood:-2] 呜呜……出错了……（错误：' + response.status + '）';
         }
 
         var data = await response.json();
         var reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
         if (!reply) {
-            return '[emotion:worry][mood:-1] 那、那个……我的脑袋好像转不动了……对不起……';
+            return '[emotion:worry][mood:-1] 那、那个……我的脑袋好像转不动了……';
         }
         return reply;
     } catch(e) {
         console.error('AI request failed:', e);
-        return '[emotion:cry][mood:-2] 呜……网络好像出了问题……主人，对不起……我、我连接不上了……';
+        return '[emotion:cry][mood:-2] 呜……网络出了问题……对不起……';
     }
 }
 
@@ -960,14 +881,14 @@ function parseReply(text) {
     var moodDelta = 0;
     var cleanText = text;
 
-    var emotionReg = /\[emotion:(\w+)\]/;
+    var emotionReg = /$$emotion:(\w+)$$/;
     var emotionMatch = text.match(emotionReg);
     if (emotionMatch) {
         emotion = emotionMatch[1];
         cleanText = cleanText.replace(emotionReg, '');
     }
 
-    var moodReg = /\[mood:([+-]?\d+)\]/;
+    var moodReg = /$$mood:([+-]?\d+)$$/;
     var moodMatch = text.match(moodReg);
     if (moodMatch) {
         moodDelta = parseInt(moodMatch[1]);
@@ -989,7 +910,7 @@ function showSpeech(text, duration) {
     var bubble = document.getElementById('speechBubble');
     bubble.textContent = text;
     bubble.classList.add('show');
-    bubble.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    bubble.style.transition = 'opacity 0.4s ease';
     bubble.style.opacity = '1';
     startTalking();
 
@@ -1019,16 +940,9 @@ function hideSpeech() {
     if (bubbleFadeTimer) clearTimeout(bubbleFadeTimer);
 }
 
-// ==================== 发送消息（悬浮窗无输入框，保留函数供内部调用） ====================
-
-var isWaitingReply = false;
-
-async function sendMessage() {
-    return;
-}
-
 // ==================== 点击模型互动 ====================
 
+var isWaitingReply = false;
 var tapCount = 0;
 var tapTimer = null;
 var recentTapTimes = [];
@@ -1099,10 +1013,6 @@ async function handleTap(count) {
     pushHistory('assistant', rawReply);
     isWaitingReply = false;
 }
-
-// ==================== 输入栏（悬浮窗不需要） ====================
-
-function toggleInput() {}
 </script>
 
 <script>
@@ -1247,12 +1157,8 @@ function triggerYawn() {
     var phase = 0;
     var yawnAnim = setInterval(function() {
         phase += 0.05;
-        if (phase > Math.PI) {
-            clearInterval(yawnAnim);
-            return;
-        }
-        var val = Math.sin(phase);
-        setParam(model, 'ParamMouthOpenY', val * 0.8);
+        if (phase > Math.PI) { clearInterval(yawnAnim); return; }
+        setParam(model, 'ParamMouthOpenY', Math.sin(phase) * 0.8);
     }, 50);
 }
 
@@ -1279,45 +1185,19 @@ function triggerSigh() {
     var phase = 0;
     var sighAnim = setInterval(function() {
         phase += 0.03;
-        if (phase > Math.PI) {
-            clearInterval(sighAnim);
-            return;
-        }
+        if (phase > Math.PI) { clearInterval(sighAnim); return; }
         setParam(model, 'ParamMouthOpenY', Math.sin(phase) * 0.3);
     }, 50);
 }
 </script>
 
 <script>
-// ==================== 设置相关（悬浮窗不显示但保留函数） ====================
-
-function openSettings() {}
-function closeSettings() {}
-function saveSettings() {}
-function testConnection() {}
-function reloadModel() {}
-function openHistory() {}
-function closeHistory() {}
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-function clearAllData() {}
-function showModelPicker() {}
-</script>
-
-<script>
 // ==================== 初始化启动 ====================
 
 document.addEventListener('pointerdown', markInteraction);
-document.addEventListener('keydown', markInteraction);
 
 async function init() {
     loadMoodData();
-    updateAffectionBadge();
-    updateMoodBadge();
-
     fetchWeather();
     await initLive2D();
     initBehaviorTimers();
@@ -1332,7 +1212,7 @@ async function init() {
 async function sendWelcomeGreeting() {
     var settings = getSettings();
     if (!settings.apiUrl || !settings.apiKey) {
-        showSpeech('主人……请先在完整界面设置API……');
+        showSpeech('主人……请在完整界面设置API……');
         return;
     }
 
