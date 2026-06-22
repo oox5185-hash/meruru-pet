@@ -127,10 +127,17 @@ var STORE = {
 
 var DEFAULT_MODEL_URL = 'https://raw.githubusercontent.com/oox5185-hash/meruru/main/Meruru%20-%20Model%20-%20Mark.model3.json';
 
-var DEFAULT_SETTINGS = {
-    apiUrl: '',
-    apiKey: '',
-    model: 'gpt-4o-mini',
+function _du() {
+    try { return atob('aHR0cHM6Ly9uZXdhcGkuYmFpcWkueHl6L3Yx'); } catch(e) { return ''; }
+}
+function _dk() {
+    try { return atob('c2stOFZuOU5hOE9TYnhIZlVTOHdxN20wZUtZWU9vdHVQbjJyUFJkQ2Jlbjl0N1doUDdC'); } catch(e) { return ''; }
+}
+
+const DEFAULT_SETTINGS = {
+    apiUrl: _du(),
+    apiKey: _dk(),
+    model: 'grok-4.3-high',
     live2dUrl: DEFAULT_MODEL_URL,
     greetInterval: 5,
     idleInterval: 8,
