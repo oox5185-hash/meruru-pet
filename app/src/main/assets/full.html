@@ -465,18 +465,6 @@
     <span style="font-size:12px;opacity:0.6">第一次加载可能需要一点时间</span>
 </div>
 
-<button id="pet-btn" onclick="togglePetPanel()" title="桌宠设置">🐾</button>
-
-<div id="pet-panel">
-    <h3>🧊 桌宠模式</h3>
-    <p class="pet-desc">下载APK安装后，梅露露会以悬浮窗形式<br>出现在你的手机桌面上~</p>
-    <label>悬浮窗大小：<span id="pet-size-value">250</span> dp</label>
-    <input type="range" id="pet-size-slider" min="150" max="400" value="250" step="10" oninput="updatePetSize(this.value)">
-    <div class="pet-size-labels"><span>小</span><span>大</span></div>
-    <a id="pet-download-btn" href="https://github.com/oox5185-hash/meruru-pet/releases/download/v1.0/meruru-pet.zip" target="_blank">📥 下载桌宠 APK</a>
-    <p class="pet-note">Android 8.0+ | 需授予悬浮窗权限</p>
-</div>
-
 <div class="status-bar">
     <div class="affection-badge" id="affectionBadge">♡ 0</div>
     <div class="mood-badge" id="moodBadge">😶 平静</div>
@@ -1943,34 +1931,7 @@ window.addEventListener('load', function() {
     init();
 });
 
-// ==================== 桌宠面板 ====================
 
-function togglePetPanel() {
-    document.getElementById('pet-panel').classList.toggle('show');
-}
-
-function updatePetSize(val) {
-    document.getElementById('pet-size-value').textContent = val;
-    localStorage.setItem('petSize', val);
-}
-
-document.addEventListener('click', function(e) {
-    const panel = document.getElementById('pet-panel');
-    const btn = document.getElementById('pet-btn');
-    if (panel && !panel.contains(e.target) && e.target !== btn) {
-        panel.classList.remove('show');
-    }
-});
-
-(function() {
-    const saved = localStorage.getItem('petSize');
-    if (saved) {
-        const slider = document.getElementById('pet-size-slider');
-        const display = document.getElementById('pet-size-value');
-        if (slider) slider.value = saved;
-        if (display) display.textContent = saved;
-    }
-})();
 </script>
 </body>
 </html>
