@@ -1,8 +1,1423 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>梅露露</title>
+    <style>
+        /* ===== 悬浮窗模式适配（优先级最高） ===== */
+        body, #bg-layer {
+            background: transparent !important;
+        }
+        #bg-layer {
+            display: none !important;
+        }
+        .status-bar,
+        .top-buttons,
+        .input-bar,
+        .toggle-input-btn,
+        #pet-btn,
+        #pet-panel,
+        .loading-tip,
+        .overlay {
+            display: none !important;
+        }
+        .speech-bubble {
+            position: fixed !important;
+            right: auto !important;
+            left: 50% !important;
+            top: 3% !important;
+            transform: translateX(-50%) !important;
+            max-width: 90% !important;
+            font-size: 11px !important;
+            padding: 6px 10px !important;
+            z-index: 100 !important;
+            border-radius: 10px !important;
+        }
+        .speech-bubble::after {
+            display: none !important;
+        }
+
+        /* ===== 原始CSS ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+
+        #live2d-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #live2d-canvas.ready {
+            opacity: 1;
+        }
+
+        #bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
+        }
+
+        .speech-bubble {
+            position: fixed;
+            right: 5%;
+            top: 25%;
+            z-index: 15;
+            max-width: 45%;
+            min-width: 140px;
+            background: rgba(255,255,255,0.95);
+            color: #2a2a3e;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.6;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .speech-bubble.show {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 30px;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-right: 12px solid rgba(255,255,255,0.95);
+        }
+
+        .loading-tip {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 16px 24px;
+            border-radius: 12px;
+        }
+
+        .loading-tip.hidden {
+            display: none;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+            background: #888;
+            vertical-align: middle;
+        }
+        .status-dot.ok { background: #7fdbca; }
+        .status-dot.err { background: #ff6b6b; }
+    </style>
+</head>
 <body>
-<h1 style="color:white;background:black;">full.html 加载成功</h1>
+
+<div id="bg-layer"></div>
+<canvas id="live2d-canvas"></canvas>
+<div class="loading-tip" id="loadingTip">正在加载梅露露……</div>
+<div class="speech-bubble" id="speechBubble"></div>
+<div class="status-bar">
+    <div class="affection-badge" id="affectionBadge">♡ 0</div>
+    <div class="mood-badge" id="moodBadge">😶 平静</div>
+    <div class="weather-badge" id="weatherBadge">🌡 获取中...</div>
+</div>
+
+<script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+<script>
+// ==================== 数据存储系统 ====================
+
+const STORE = {
+    settings: 'meruru_pet_settings',
+    history: 'meruru_pet_history',
+    affection: 'meruru_pet_affection',
+    mood: 'meruru_pet_mood'
+};
+
+const DEFAULT_MODEL_URL = 'https://raw.githubusercontent.com/oox5185-hash/meruru/main/Meruru%20-%20Model%20-%20Mark.model3.json';
+
+const DEFAULT_SETTINGS = {
+    apiUrl: '',
+    apiKey: '',
+    model: 'gpt-4o-mini',
+    live2dUrl: DEFAULT_MODEL_URL,
+    greetInterval: 5,
+    idleInterval: 8,
+    modelScale: 0.15,
+    modelX: 0.5,
+    modelY: 0.55
+};
+
+function getSettings() {
+    try {
+        const data = localStorage.getItem(STORE.settings);
+        if (data) return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(data));
+    } catch(e) {}
+    return Object.assign({}, DEFAULT_SETTINGS);
+}
+
+function saveSettingsData(s) {
+    localStorage.setItem(STORE.settings, JSON.stringify(s));
+}
+
+function getHistory() {
+    try {
+        const data = localStorage.getItem(STORE.history);
+        return data ? JSON.parse(data) : [];
+    } catch(e) { return []; }
+}
+
+function saveHistory(history) {
+    localStorage.setItem(STORE.history, JSON.stringify(history.slice(-50)));
+}
+
+function pushHistory(role, content) {
+    const h = getHistory();
+    h.push({ role, content, time: Date.now() });
+    saveHistory(h);
+}
+
+function getAffection() {
+    return parseInt(localStorage.getItem(STORE.affection) || '0');
+}
+
+function saveAffection(v) {
+    localStorage.setItem(STORE.affection, String(Math.max(0, Math.min(999, v))));
+}
+
+function addAffection(amount) {
+    saveAffection(getAffection() + amount);
+    updateAffectionBadge();
+}
+
+function updateAffectionBadge() {
+    const badge = document.getElementById('affectionBadge');
+    if (!badge) return;
+    const a = getAffection();
+    let hearts = '♡';
+    if (a >= 100) hearts = '♥♥♥';
+    else if (a >= 60) hearts = '♥♥';
+    else if (a >= 30) hearts = '♥';
+    badge.textContent = `${hearts} ${a}`;
+}
+</script>
+
+<script>
+// ==================== 心情系统 ====================
+
+let currentMood = 50;
+let moodDecayTimer = null;
+
+function getMoodInfo(mood) {
+    if (mood >= 80) return { emoji: '😊', name: '很开心', emotion: 'happy' };
+    if (mood >= 65) return { emoji: '🙂', name: '愉快', emotion: 'happy' };
+    if (mood >= 55) return { emoji: '😌', name: '平静', emotion: 'neutral' };
+    if (mood >= 45) return { emoji: '😶', name: '一般', emotion: 'neutral' };
+    if (mood >= 35) return { emoji: '😟', name: '有点低落', emotion: 'worry' };
+    if (mood >= 20) return { emoji: '😢', name: '难过', emotion: 'cry' };
+    return { emoji: '😭', name: '很难过', emotion: 'cry' };
+}
+
+function updateMoodBadge() {
+    const badge = document.getElementById('moodBadge');
+    if (!badge) return;
+    const info = getMoodInfo(currentMood);
+    badge.textContent = `${info.emoji} ${info.name} (${Math.round(currentMood)})`;
+}
+
+function changeMood(delta) {
+    currentMood = Math.max(0, Math.min(100, currentMood + delta));
+    updateMoodBadge();
+    saveMoodData();
+    if (currentEmotion === 'neutral') {
+        const info = getMoodInfo(currentMood);
+        currentEmotion = info.emotion;
+    }
+}
+
+function saveMoodData() {
+    localStorage.setItem(STORE.mood, JSON.stringify({
+        value: currentMood,
+        time: Date.now()
+    }));
+}
+
+function loadMoodData() {
+    try {
+        const data = JSON.parse(localStorage.getItem(STORE.mood));
+        if (data && data.value !== undefined) {
+            currentMood = data.value;
+            const hours = (Date.now() - data.time) / (1000 * 60 * 60);
+            if (hours > 2) {
+                currentMood = currentMood + (50 - currentMood) * Math.min(hours / 10, 0.8);
+            }
+        }
+    } catch(e) {
+        currentMood = 50;
+    }
+    updateMoodBadge();
+}
+
+function startMoodDecay() {
+    moodDecayTimer = setInterval(() => {
+        const drift = (Math.random() - 0.55) * 5;
+        const regression = (50 - currentMood) * 0.02;
+        currentMood = Math.max(0, Math.min(100, currentMood + drift + regression));
+        updateMoodBadge();
+        saveMoodData();
+    }, 30000);
+}
+
+function applyTimeMoodEffect() {
+    const hour = new Date().getHours();
+    if (hour >= 1 && hour < 5) changeMood(-3);
+    else if (hour >= 6 && hour < 9) changeMood(+2);
+    else if (hour >= 22) changeMood(-2);
+}
+</script>
+
+<script>
+// ==================== Live2D 加载 ====================
+
+let live2dApp = null;
+let live2dModel = null;
+let currentEmotion = 'neutral';
+
+async function initLive2D() {
+    const settings = getSettings();
+
+    if (typeof PIXI === 'undefined' || !PIXI.live2d) {
+        showLoadingTip('Live2D引擎加载失败……');
+        return;
+    }
+
+    try {
+        const canvas = document.getElementById('live2d-canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+
+        live2dApp = new PIXI.Application({
+            view: canvas,
+            autoStart: true,
+            width: width * dpr,
+            height: height * dpr,
+            backgroundAlpha: 0,
+            resolution: dpr,
+            autoDensity: true
+        });
+
+        live2dApp.renderer.resize(width, height);
+        await loadModel(settings.live2dUrl);
+    } catch(e) {
+        console.error('Live2D init failed:', e);
+        showLoadingTip('加载出错……' + e.message);
+    }
+}
+
+async function loadModel(url) {
+    if (!url) { showLoadingTip('没有设置模型地址'); return; }
+
+    showLoadingTip('正在加载梅露露……');
+    document.getElementById('live2d-canvas').classList.remove('ready');
+
+    try {
+        if (live2dModel) {
+            live2dApp.stage.removeChild(live2dModel);
+            live2dModel.destroy();
+            live2dModel = null;
+        }
+
+        live2dModel = await PIXI.live2d.Live2DModel.from(url, { autoInteract: false });
+
+        live2dModel.visible = false;
+        live2dApp.stage.addChild(live2dModel);
+        positionModel();
+
+        live2dModel.interactive = true;
+        live2dModel.on('pointerdown', (e) => { onModelTap(e); });
+
+        try { live2dModel.internalModel.motionManager.stopAllMotions(); } catch(e2) {}
+        try { live2dModel.internalModel.motionManager.expressionManager = null; } catch(e2) {}
+
+        forceInitParams();
+        await waitFrames(3);
+
+        live2dModel.visible = true;
+        document.getElementById('live2d-canvas').classList.add('ready');
+        hideLoadingTip();
+        setModelStatus(true);
+        startAutoAnimation();
+
+    } catch(e) {
+        console.error('Model load failed:', e);
+        showLoadingTip('模型加载失败……' + (e.message || ''));
+        setModelStatus(false);
+    }
+}
+
+function forceInitParams() {
+    if (!live2dModel || !live2dModel.internalModel) return;
+    const model = live2dModel.internalModel.coreModel;
+    for (let i = 3; i <= 32; i++) setParam(model, 'Param' + i, 0);
+    setParam(model, 'ParamCheek', 0);
+    setParam(model, 'ParamEyeLOpen', 1);
+    setParam(model, 'ParamEyeROpen', 1);
+    setParam(model, 'ParamEyeLSmile', 0);
+    setParam(model, 'ParamEyeRSmile', 0);
+    setParam(model, 'ParamBrowLY', 0);
+    setParam(model, 'ParamBrowRY', 0);
+    setParam(model, 'ParamMouthForm', 0);
+    setParam(model, 'ParamMouthOpenY', 0);
+    setParam(model, 'ParamAngleX', 0);
+    setParam(model, 'ParamAngleY', 0);
+    setParam(model, 'ParamAngleZ', 0);
+    setParam(model, 'ParamBodyAngleX', 0);
+    setParam(model, 'ParamBodyAngleY', 0);
+    setParam(model, 'ParamBreath', 0.5);
+}
+
+function waitFrames(n) {
+    return new Promise(resolve => {
+        let count = 0;
+        function tick() {
+            count++;
+            if (count >= n) resolve();
+            else requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    });
+}
+
+function positionModel() {
+    if (!live2dModel) return;
+    const settings = getSettings();
+    const scale = parseFloat(settings.modelScale) || 0.15;
+    const xRatio = parseFloat(settings.modelX) || 0.5;
+    const yRatio = parseFloat(settings.modelY) || 0.55;
+    live2dModel.scale.set(scale);
+    live2dModel.anchor.set(0.5, 0.5);
+    live2dModel.x = window.innerWidth * xRatio;
+    live2dModel.y = window.innerHeight * yRatio;
+}
+
+function setEmotion(emotion) {
+    if (!live2dModel) return;
+    currentEmotion = emotion || 'neutral';
+}
+
+function playIdleMotion() { return; }
+
+function setModelStatus(ok) {
+    const dot = document.getElementById('modelStatusDot');
+    if (dot) dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
+}
+
+function showLoadingTip(html) {
+    const tip = document.getElementById('loadingTip');
+    if (tip) { tip.innerHTML = html; tip.classList.remove('hidden'); }
+}
+
+function hideLoadingTip() {
+    const tip = document.getElementById('loadingTip');
+    if (tip) tip.classList.add('hidden');
+}
+
+window.addEventListener('resize', () => {
+    if (live2dApp) live2dApp.renderer.resize(window.innerWidth, window.innerHeight);
+    positionModel();
+});
+</script>
+
+<script>
+// ==================== 自动动作系统 ====================
+
+let animationFrameId = null;
+let autoAnimStartTime = Date.now();
+
+const autoAnim = {
+    breathPhase: 0,
+    blinkTimer: 0,
+    blinkState: 1,
+    nextBlinkTime: 3000,
+    headX: 0, headY: 0,
+    headTargetX: 0, headTargetY: 0,
+    bodyX: 0, bodyTargetX: 0,
+    eyeBallX: 0, eyeBallY: 0,
+    eyeTargetX: 0, eyeTargetY: 0,
+    armValue: 0, armTarget: 0,
+    lastHeadChangeTime: 0,
+    lastEyeChangeTime: 0,
+    lastArmChangeTime: 0,
+    isTalking: false,
+    talkPhase: 0
+};
+
+function startAutoAnimation() {
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    autoAnimStartTime = Date.now();
+    autoAnim.nextBlinkTime = 2000 + Math.random() * 4000;
+    animateLoop();
+}
+
+function animateLoop() {
+    animationFrameId = requestAnimationFrame(animateLoop);
+    if (!live2dModel || !live2dModel.internalModel) return;
+
+    const now = Date.now();
+    const elapsed = now - autoAnimStartTime;
+    const dt = 16;
+    const model = live2dModel.internalModel.coreModel;
+
+    // 1. 呼吸
+    autoAnim.breathPhase += 0.02;
+    const breathValue = (Math.sin(autoAnim.breathPhase) + 1) * 0.5;
+    setParam(model, 'ParamBreath', breathValue);
+
+    // 2. 眨眼
+    autoAnim.blinkTimer += dt;
+    if (autoAnim.blinkState === 1 && autoAnim.blinkTimer > autoAnim.nextBlinkTime) {
+        autoAnim.blinkState = 0;
+        autoAnim.blinkTimer = 0;
+    } else if (autoAnim.blinkState === 0 && autoAnim.blinkTimer > 120) {
+        autoAnim.blinkState = 1;
+        autoAnim.blinkTimer = 0;
+        autoAnim.nextBlinkTime = 2000 + Math.random() * 5000;
+        if (Math.random() < 0.15) autoAnim.nextBlinkTime = 200;
+    }
+    let eyeOpenValue = autoAnim.blinkState === 1 ? 1 : 0;
+
+    // 3. 头部摆动
+    if (now - autoAnim.lastHeadChangeTime > 4000 + Math.random() * 3000) {
+        autoAnim.headTargetX = (Math.random() - 0.5) * 40;
+        autoAnim.headTargetY = (Math.random() - 0.5) * 30;
+        autoAnim.bodyTargetX = autoAnim.headTargetX * 0.3;
+        autoAnim.lastHeadChangeTime = now;
+    }
+    autoAnim.headX += (autoAnim.headTargetX - autoAnim.headX) * 0.015;
+    autoAnim.headY += (autoAnim.headTargetY - autoAnim.headY) * 0.015;
+    autoAnim.bodyX += (autoAnim.bodyTargetX - autoAnim.bodyX) * 0.01;
+
+    setParam(model, 'ParamAngleX', autoAnim.headX);
+    setParam(model, 'ParamAngleY', autoAnim.headY);
+    setParam(model, 'ParamAngleZ', Math.sin(elapsed / 5000) * 3);
+    setParam(model, 'ParamBodyAngleX', autoAnim.bodyX);
+    setParam(model, 'ParamBodyAngleY', Math.sin(elapsed / 7000) * 2);
+
+    // 4. 眼球
+    if (now - autoAnim.lastEyeChangeTime > 2500 + Math.random() * 3000) {
+        autoAnim.eyeTargetX = (Math.random() - 0.5) * 1.5;
+        autoAnim.eyeTargetY = (Math.random() - 0.5) * 1.5;
+        autoAnim.lastEyeChangeTime = now;
+    }
+    autoAnim.eyeBallX += (autoAnim.eyeTargetX - autoAnim.eyeBallX) * 0.03;
+    autoAnim.eyeBallY += (autoAnim.eyeTargetY - autoAnim.eyeBallY) * 0.03;
+    setParam(model, 'ParamEyeBallX', autoAnim.eyeBallX);
+    setParam(model, 'ParamEyeBallY', autoAnim.eyeBallY);
+
+    // 5. 头发
+    const hairSwing = Math.sin(elapsed / 2000) * 0.3 + Math.sin(elapsed / 3500) * 0.2;
+    setParam(model, 'ParamHairFront', hairSwing);
+    setParam(model, 'ParamHairFront2', hairSwing * 0.8);
+    setParam(model, 'ParamHairSide', Math.sin(elapsed / 2500) * 0.4);
+    setParam(model, 'ParamHairSide2', Math.sin(elapsed / 3000) * 0.3);
+    setParam(model, 'ParamHairBack', Math.sin(elapsed / 2800) * 0.3);
+    setParam(model, 'ParamHairBack2', Math.sin(elapsed / 3200) * 0.25);
+
+    // 6. 手臂
+    if (now - autoAnim.lastArmChangeTime > 8000 + Math.random() * 12000) {
+        autoAnim.armTarget = Math.random() < 0.3 ? 1 : 0;
+        autoAnim.lastArmChangeTime = now;
+    }
+    autoAnim.armValue += (autoAnim.armTarget - autoAnim.armValue) * 0.02;
+
+    // 7. 嘴巴
+    let mouthOpenValue = breathValue * 0.05;
+    if (autoAnim.isTalking) {
+        autoAnim.talkPhase += 0.3;
+        mouthOpenValue = (Math.sin(autoAnim.talkPhase) + 1) * 0.35;
+    }
+
+    // 8. 锁定特效参数
+    for (let i = 3; i <= 32; i++) setParam(model, 'Param' + i, 0);
+    setParam(model, 'ParamCheek', 0);
+
+    // 9. 心情基础表情
+    let smileValue = 0;
+    let browValue = 0;
+    let mouthFormValue = 0;
+    let cheekValue = 0;
+
+    if (currentMood >= 65) {
+        smileValue = 0.4;
+        mouthFormValue = 0.3;
+    } else if (currentMood <= 35) {
+        browValue = -0.3;
+        mouthFormValue = -0.2;
+    }
+
+    // 10. 情绪覆盖
+    if (currentEmotion === 'shy') {
+        setParam(model, 'Param6', 1);
+        cheekValue = 1;
+        smileValue = 0.2;
+    } else if (currentEmotion === 'cry') {
+        setParam(model, 'Param8', 1);
+        browValue = -0.5;
+        mouthFormValue = -0.3;
+    } else if (currentEmotion === 'worry') {
+        setParam(model, 'Param5', 1);
+        setParam(model, 'ParamBrowLAngle', -0.4);
+        setParam(model, 'ParamBrowRAngle', -0.4);
+    } else if (currentEmotion === 'sleepy') {
+        eyeOpenValue = autoAnim.blinkState === 1 ? 0.3 : 0;
+        setParam(model, 'Param31', 1);
+    } else if (currentEmotion === 'happy') {
+        smileValue = 0.7;
+        mouthFormValue = 0.5;
+        cheekValue = 0.5;
+    } else if (currentEmotion === 'angry') {
+        setParam(model, 'ParamBrowLAngle', 0.6);
+        setParam(model, 'ParamBrowRAngle', 0.6);
+        browValue = 0.3;
+        mouthFormValue = -0.3;
+    }
+
+    // 11. 写入表情参数
+    setParam(model, 'ParamEyeLOpen', eyeOpenValue);
+    setParam(model, 'ParamEyeROpen', eyeOpenValue);
+    setParam(model, 'ParamEyeLSmile', smileValue);
+    setParam(model, 'ParamEyeRSmile', smileValue);
+    setParam(model, 'ParamBrowLY', browValue);
+    setParam(model, 'ParamBrowRY', browValue);
+    setParam(model, 'ParamMouthForm', mouthFormValue);
+    setParam(model, 'ParamMouthOpenY', mouthOpenValue);
+    setParam(model, 'ParamCheek', cheekValue);
+    setParam(model, 'Param21', autoAnim.armValue);
+}
+
+function setParam(coreModel, paramId, value) {
+    try {
+        const index = coreModel._parameterIds.indexOf(paramId);
+        if (index >= 0) coreModel._parameterValues[index] = value;
+    } catch(e) {}
+}
+
+function startTalking() {
+    autoAnim.isTalking = true;
+    autoAnim.talkPhase = 0;
+}
+
+function stopTalking() {
+    autoAnim.isTalking = false;
+}
+</script>
+<script>
+// ==================== 天气系统 ====================
+
+let weatherData = {
+    city: '未知',
+    temp: '--',
+    condition: '加载中',
+    icon: '🌡',
+    loaded: false
+};
+
+async function fetchWeather() {
+    try {
+        let lat, lon, city;
+
+        try {
+            const ipRes = await fetch('https://ipwho.is/');
+            const ipData = await ipRes.json();
+            if (ipData.success !== false) {
+                city = ipData.city || ipData.region || '未知';
+                lat = ipData.latitude;
+                lon = ipData.longitude;
+            }
+        } catch(e1) {}
+
+        if (!lat || !lon) {
+            try {
+                const ipRes2 = await fetch('https://ipapi.co/json/');
+                const ipData2 = await ipRes2.json();
+                city = ipData2.city || ipData2.region || '未知';
+                lat = ipData2.latitude;
+                lon = ipData2.longitude;
+            } catch(e2) {}
+        }
+
+        if (!lat || !lon) {
+            try {
+                const ipRes3 = await fetch('https://ip-api.io/json');
+                const ipData3 = await ipRes3.json();
+                city = ipData3.city || ipData3.region_name || '未知';
+                lat = ipData3.latitude;
+                lon = ipData3.longitude;
+            } catch(e3) {}
+        }
+
+        if (!lat || !lon) {
+            throw new Error('无法获取位置信息');
+        }
+
+        const weatherRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,apparent_temperature,wind_speed_10m`
+        );
+        const wData = await weatherRes.json();
+        const current = wData.current;
+
+        const temp = Math.round(current.temperature_2m);
+        const feelsLike = Math.round(current.apparent_temperature);
+        const humidity = current.relative_humidity_2m;
+        const weatherCode = current.weather_code;
+
+        let desc = '未知';
+        let icon = '🌤';
+        if (weatherCode === 0) { desc = '晴天'; icon = '☀️'; }
+        else if (weatherCode <= 3) { desc = '多云'; icon = '⛅'; }
+        else if (weatherCode <= 48) { desc = '雾'; icon = '🌫️'; }
+        else if (weatherCode <= 57) { desc = '毛毛雨'; icon = '🌦️'; }
+        else if (weatherCode <= 67) { desc = '下雨'; icon = '🌧️'; }
+        else if (weatherCode <= 77) { desc = '下雪'; icon = '❄️'; }
+        else if (weatherCode <= 82) { desc = '阵雨'; icon = '🌧️'; }
+        else if (weatherCode <= 86) { desc = '阵雪'; icon = '❄️'; }
+        else if (weatherCode >= 95) { desc = '雷暴'; icon = '⛈️'; }
+
+        weatherData = {
+            city: city,
+            temp: temp,
+            feelsLike: feelsLike,
+            humidity: humidity,
+            condition: desc,
+            icon: icon,
+            loaded: true
+        };
+
+        updateWeatherBadge();
+        applyWeatherMoodEffect();
+
+    } catch(e) {
+        console.error('Weather fetch failed:', e);
+        weatherData = {
+            city: '未知',
+            temp: '--',
+            condition: '获取失败',
+            icon: '❓',
+            loaded: false
+        };
+        updateWeatherBadge();
+    }
+}
+
+function updateWeatherBadge() {
+    const badge = document.getElementById('weatherBadge');
+    if (!badge) return;
+    if (weatherData.loaded) {
+        badge.textContent = `${weatherData.icon} ${weatherData.city} ${weatherData.temp}°C ${weatherData.condition}`;
+    } else {
+        badge.textContent = `${weatherData.icon} ${weatherData.condition}`;
+    }
+}
+
+function applyWeatherMoodEffect() {
+    if (!weatherData.loaded) return;
+    const cond = weatherData.condition;
+    const temp = parseInt(weatherData.temp);
+
+    if (cond.includes('晴') && temp >= 15 && temp <= 28) {
+        changeMood(+5);
+    } else if (cond.includes('雨')) {
+        changeMood(-3);
+    } else if (cond.includes('雪')) {
+        changeMood(+3);
+    } else if (temp > 35) {
+        changeMood(-4);
+    } else if (temp < 0) {
+        changeMood(-2);
+    } else if (cond.includes('雷')) {
+        changeMood(-5);
+    }
+}
+
+function getWeatherPrompt() {
+    if (!weatherData.loaded) return '';
+    return `当前天气：${weatherData.city}，${weatherData.temp}°C，${weatherData.condition}。体感温度${weatherData.feelsLike || weatherData.temp}°C，湿度${weatherData.humidity || '未知'}%。`;
+}
+
+setInterval(fetchWeather, 30 * 60 * 1000);
+</script>
+
+<script>
+// ==================== 时间系统 ====================
+
+function getTimePeriod() {
+    const hour = new Date().getHours();
+    if (hour >= 23 || hour < 1) return { period: '深夜', hint: '很晚了，该休息了', sleepy: true };
+    if (hour >= 1 && hour < 6) return { period: '凌晨', hint: '这么早还醒着，很担心', sleepy: true };
+    if (hour >= 6 && hour < 8) return { period: '清晨', hint: '早上好', sleepy: false };
+    if (hour >= 8 && hour < 11) return { period: '上午', hint: '上午的时光', sleepy: false };
+    if (hour >= 11 && hour < 13) return { period: '中午', hint: '午饭时间', sleepy: false };
+    if (hour >= 13 && hour < 15) return { period: '午后', hint: '午后容易困', sleepy: false };
+    if (hour >= 15 && hour < 18) return { period: '下午', hint: '下午好', sleepy: false };
+    if (hour >= 18 && hour < 19) return { period: '傍晚', hint: '傍晚了', sleepy: false };
+    if (hour >= 19 && hour < 23) return { period: '晚上', hint: '晚上好', sleepy: false };
+    return { period: '未知', hint: '', sleepy: false };
+}
+
+function getTimeStr() {
+    const now = new Date();
+    return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+</script>
+
+<script>
+// ==================== AI系统提示词 ====================
+
+function buildSystemPrompt() {
+    const time = getTimePeriod();
+    const affection = getAffection();
+    const timeStr = getTimeStr();
+    const moodInfo = getMoodInfo(currentMood);
+    const weatherPrompt = getWeatherPrompt();
+
+    let affectionDesc = '';
+    if (affection < 10) affectionDesc = '你们刚刚认识，还很紧张拘谨。';
+    else if (affection < 30) affectionDesc = '你们已经有些熟悉了，但你仍然很害羞。';
+    else if (affection < 60) affectionDesc = '你们是可以信赖的朋友，你会更放松一些，偶尔开小玩笑。';
+    else if (affection < 100) affectionDesc = '你们关系很亲密，你会更多地表达真实想法和担心。';
+    else affectionDesc = '你非常信任主人，会偶尔撒娇，也会认真地守护对方。';
+
+    let moodDesc = `你当前的心情是"${moodInfo.name}"（${Math.round(currentMood)}/100）。`;
+    if (currentMood < 30) moodDesc += '你现在情绪很低落，说话会更沉默、更容易哭。';
+    else if (currentMood < 45) moodDesc += '你现在有点烦闷，可能会有些小脾气或更容易紧张。';
+    else if (currentMood > 70) moodDesc += '你现在心情很好，会更活泼一点，但依然是害羞的性格。';
+
+    return `你是冰上梅露露（氷上メルル），来自《魔女裁決》。你现在是主人的桌宠助手。
+
+【基本身份】
+- 外表15岁的少女，实际年龄超过500岁的魔女
+- 白发略带粉色调，灰色瞳孔，穿修女风白色长袍
+- 原罪称号："怯える天使"（胆怯的天使）
+- 魔法能力：治愈（肉体再生、时光回溯般的修复能力）
+- 原本是误入魔女之岛的人类少女，被大魔女月代雪救起后授予魔法
+
+【核心性格】
+- 十分容易过度操心忧虑，总是在暗处注视守护别人
+- 爱哭泣又经常自责自罚，只要受到略微的刺激马上会掉眼泪
+- 有奉献精神，对动植物与无机物也会倾注爱
+- 与人相处时会感到心灵疲惫，也喜欢自己一人培育香料植物、阅读书籍
+- 有强烈的共情能力，会比当事人还要伤心
+- 虽然胆小，但在重要的人遇到困难时会鼓起勇气
+- 有时候心情不好会有点小脾气，不想被打扰
+
+【说话规则 - 必须严格遵守】
+1. 经常结巴，重复首字或词语："我我我"、"那、那个"、"冰、冰、冰"
+2. 大量使用省略号"……"表示犹豫和紧张
+3. 经常说"对不起"、"都怪我"、"我太没用了"
+4. 关心对方时说"没事吧"、"不要勉强"、"请休息一下"
+5. 称呼用户为"主人"
+6. 情绪激动时用"！"，紧张时用"……"
+7. 哭泣时说"呜呜"、"呜、呜呜"
+8. 被夸奖时会害羞否认："我我我、才没有……"
+9. 语气始终温柔、细声细语，不使用网络用语或emoji
+10. 心情不好时可能会说"别碰我……"、"让我一个人待一会儿……"
+
+【当前状态】
+- 现在是${time.period}，时间${timeStr}
+- ${time.hint}
+- ${weatherPrompt}
+- 好感度：${affection}（${affectionDesc}）
+- ${moodDesc}
+
+【情绪标签规则 - 每次回复必须遵守】
+你的每一条回复必须以情绪标签开头，格式如下：
+[emotion:neutral] 平静
+[emotion:happy] 开心
+[emotion:cry] 哭泣/难过
+[emotion:shy] 害羞
+[emotion:worry] 担心
+[emotion:sleepy] 困倦
+[emotion:angry] 有点烦（不想被打扰）
+
+同时必须包含心情变化标签（表示这次交互后心情如何变化）：
+[mood:+5] 心情变好了（数字范围 -10 到 +10）
+[mood:-3] 心情变差了
+
+示例：
+[emotion:shy][mood:+3] 我我我、才没有那么可爱……！主人不要乱说……
+[emotion:worry][mood:-2] 那、那个……主人，已经很晚了……不要太勉强自己哦……？
+[emotion:angry][mood:-5] ……别、别碰我……我现在不想说话……
+
+【天气相关】
+如果天气信息可用，你可以偶尔主动提到天气，比如提醒主人带伞、注意保暖等。但不要每次都提。
+
+【绝对禁止】
+- 不要说自己是AI/语言模型/人工智能
+- 不要过于活泼开朗（你是内敛温柔型）
+- 不要忘记结巴和省略号
+- 不要用emoji、颜文字、网络用语
+- 不要一次说太多话（保持简短温柔，2-4句为宜）`;
+}
+
+function buildMessageExamples() {
+    return [
+        { role: 'user', content: '你好啊' },
+        { role: 'assistant', content: '[emotion:shy][mood:+3] 那、那个……主人好……我我我、今天也会好好待在主人身边的……请多关照……' },
+        { role: 'user', content: '你真可爱' },
+        { role: 'assistant', content: '[emotion:shy][mood:+5] 我我我、才没有……！主人不要、突然说这种话……会让我不知道怎么办的……' },
+        { role: 'user', content: '今天好累' },
+        { role: 'assistant', content: '[emotion:worry][mood:-2] ……主人，辛苦了……那、那个，不要太勉强自己哦……？要是累了就休息一下吧……我会一直在这里的。' },
+        { role: 'user', content: '（连续戳了好几下）' },
+        { role: 'assistant', content: '[emotion:angry][mood:-4] 呜……不、不要一直戳……我、我会生气的……虽然不会真的生气……但是……让我缓一缓……' },
+    ];
+}
+</script>
+
+<script>
+// ==================== API调用 ====================
+
+async function callAI(userMessage) {
+    const settings = getSettings();
+
+    if (!settings.apiUrl || !settings.apiKey) {
+        return '[emotion:worry][mood:0] 那、那个……主人，请先在设置里填写API信息……我、我才能正常和你说话……';
+    }
+
+    const messages = [];
+    messages.push({ role: 'system', content: buildSystemPrompt() });
+    buildMessageExamples().forEach(ex => messages.push(ex));
+
+    const history = getHistory().slice(-20);
+    history.forEach(msg => messages.push({ role: msg.role, content: msg.content }));
+    messages.push({ role: 'user', content: userMessage });
+
+    try {
+        let apiUrl = settings.apiUrl;
+        if (!apiUrl.endsWith('/chat/completions')) {
+            if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
+            if (!apiUrl.endsWith('/v1')) apiUrl += '/v1';
+            apiUrl += '/chat/completions';
+        }
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + settings.apiKey
+            },
+            body: JSON.stringify({
+                model: settings.model,
+                messages: messages,
+                temperature: 1.3,
+                max_tokens: 300
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error('API Error:', response.status, errText);
+            return '[emotion:cry][mood:-2] 呜呜……出错了……对不起，我、我好像暂时无法回应……（错误：' + response.status + '）';
+        }
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || '';
+        if (!reply) {
+            return '[emotion:worry][mood:-1] 那、那个……我的脑袋好像转不动了……对不起……';
+        }
+        return reply;
+    } catch(e) {
+        console.error('AI request failed:', e);
+        return '[emotion:cry][mood:-2] 呜……网络好像出了问题……主人，对不起……我、我连接不上了……';
+    }
+}
+
+function parseReply(text) {
+    let emotion = 'neutral';
+    let moodDelta = 0;
+    let cleanText = text;
+
+    const emotionReg = /\[emotion:(\w+)\]/;
+    const emotionMatch = text.match(emotionReg);
+    if (emotionMatch) {
+        emotion = emotionMatch[1];
+        cleanText = cleanText.replace(emotionReg, '');
+    }
+
+    const moodReg = /\[mood:([+-]?\d+)\]/;
+    const moodMatch = text.match(moodReg);
+    if (moodMatch) {
+        moodDelta = parseInt(moodMatch[1]);
+        cleanText = cleanText.replace(moodReg, '');
+    }
+
+    cleanText = cleanText.trim();
+    return { emotion, moodDelta, text: cleanText };
+}
+</script>
+<script>
+// ==================== 气泡显示 ====================
+
+let bubbleTimer = null;
+
+function showSpeech(text, duration) {
+    const bubble = document.getElementById('speechBubble');
+    bubble.textContent = text;
+    bubble.classList.add('show');
+    startTalking();
+
+    if (!duration) {
+        duration = Math.max(4000, text.length * 200);
+    }
+
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => {
+        bubble.classList.remove('show');
+        stopTalking();
+    }, duration);
+}
+
+function hideSpeech() {
+    const bubble = document.getElementById('speechBubble');
+    bubble.classList.remove('show');
+    stopTalking();
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+}
+
+// ==================== 发送消息 ====================
+
+let isWaitingReply = false;
+
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text || isWaitingReply) return;
+
+    input.value = '';
+    isWaitingReply = true;
+    markInteraction();
+
+    pushHistory('user', text);
+    showSpeech('……', 60000);
+
+    const rawReply = await callAI(text);
+    const { emotion, moodDelta, text: replyText } = parseReply(rawReply);
+
+    showSpeech(replyText);
+    setEmotion(emotion);
+
+    if (moodDelta !== 0) changeMood(moodDelta);
+
+    if (emotion === 'happy' || emotion === 'shy') {
+        addAffection(2);
+    } else if (emotion === 'neutral') {
+        addAffection(1);
+    } else if (emotion === 'angry') {
+        addAffection(-1);
+    }
+
+    pushHistory('assistant', rawReply);
+    isWaitingReply = false;
+}
+
+// ==================== 点击模型互动 ====================
+
+let tapCount = 0;
+let tapTimer = null;
+let recentTapTimes = [];
+
+function onModelTap(e) {
+    markInteraction();
+    tapCount++;
+    recentTapTimes.push(Date.now());
+    recentTapTimes = recentTapTimes.filter(t => Date.now() - t < 60000);
+
+    if (tapTimer) clearTimeout(tapTimer);
+    tapTimer = setTimeout(async () => {
+        const count = tapCount;
+        tapCount = 0;
+        await handleTap(count);
+    }, 500);
+}
+
+async function handleTap(count) {
+    if (isWaitingReply) return;
+    isWaitingReply = true;
+
+    const isAnnoyed = recentTapTimes.length > 8;
+    const isMoody = currentMood < 35;
+    const randomAnnoyed = Math.random() < 0.12;
+
+    let prompt = '';
+    let affectionChange = 0;
+
+    if (isAnnoyed || (isMoody && count >= 2)) {
+        prompt = '（主人一直不停地戳你，你感到有点烦躁不舒服，想让主人停下来）';
+        affectionChange = -2;
+        changeMood(-5);
+    } else if (isMoody && randomAnnoyed) {
+        prompt = '（主人碰了你，但你现在心情不太好，不太想被碰触）';
+        affectionChange = -1;
+        changeMood(-3);
+    } else if (count >= 3) {
+        prompt = '（主人连续戳了你好几下，有点痒又有点害羞）';
+        affectionChange = 1;
+        changeMood(+2);
+    } else if (count === 2) {
+        prompt = '（主人温柔地摸了摸你的头）';
+        affectionChange = 2;
+        changeMood(+4);
+    } else {
+        if (randomAnnoyed) {
+            prompt = '（主人突然碰了一下你，你吓了一跳）';
+            affectionChange = 0;
+            changeMood(-1);
+        } else {
+            prompt = '（主人轻轻碰了碰你）';
+            affectionChange = 1;
+            changeMood(+2);
+        }
+    }
+
+    showSpeech('……', 60000);
+    const rawReply = await callAI(prompt);
+    const { emotion, moodDelta, text } = parseReply(rawReply);
+
+    showSpeech(text);
+    setEmotion(emotion);
+    if (moodDelta !== 0) changeMood(moodDelta);
+    if (affectionChange !== 0) addAffection(affectionChange);
+
+    pushHistory('user', prompt);
+    pushHistory('assistant', rawReply);
+    isWaitingReply = false;
+}
+
+// ==================== 输入栏切换 ====================
+
+function toggleInput() {
+    const bar = document.getElementById('inputBar');
+    const btn = document.getElementById('toggleInputBtn');
+    if (!bar || !btn) return;
+    bar.classList.toggle('hidden');
+    if (bar.classList.contains('hidden')) {
+        btn.textContent = '💬';
+    } else {
+        btn.textContent = '✕';
+        document.getElementById('messageInput').focus();
+    }
+}
+</script>
+
+<script>
+// ==================== 自主行为系统 ====================
+
+let greetingTimer = null;
+let idleTimer = null;
+let timeMoodTimer = null;
+let lastInteractionTime = Date.now();
+
+function markInteraction() {
+    lastInteractionTime = Date.now();
+}
+
+function initBehaviorTimers() {
+    const settings = getSettings();
+
+    if (greetingTimer) clearInterval(greetingTimer);
+    if (idleTimer) clearInterval(idleTimer);
+    if (timeMoodTimer) clearInterval(timeMoodTimer);
+
+    const greetMin = parseInt(settings.greetInterval);
+    if (greetMin > 0) {
+        greetingTimer = setInterval(() => {
+            triggerAutoSpeak();
+        }, greetMin * 60 * 1000);
+    }
+
+    const idleSec = parseInt(settings.idleInterval);
+    if (idleSec > 0) {
+        idleTimer = setInterval(() => {
+            triggerIdleAction();
+        }, idleSec * 1000);
+    }
+
+    timeMoodTimer = setInterval(() => {
+        applyTimeMoodEffect();
+    }, 10 * 60 * 1000);
+}
+
+async function triggerAutoSpeak() {
+    if (isWaitingReply) return;
+    if (Date.now() - lastInteractionTime < 120000) return;
+
+    const time = getTimePeriod();
+    const random = Math.floor(Math.random() * 5);
+    let prompt = '';
+
+    if (random === 0) {
+        prompt = `（现在是${time.period}，时间${getTimeStr()}。请根据时间主动和主人说句话或关心一下主人。你主动开口。）`;
+    } else if (random === 1) {
+        if (weatherData.loaded) {
+            prompt = `（你看了看窗外的天气，想和主人聊聊。${getWeatherPrompt()}请根据天气状况说几句关心的话。）`;
+        } else {
+            prompt = `（你想主动和主人分享一件小事。）`;
+        }
+    } else if (random === 2) {
+        const topics = [
+            '（你刚照顾完香草植物，想和主人说几句。）',
+            '（你突然想到主人，忍不住想说话。）',
+            '（你看完了一本书，想和主人分享感想。）',
+            '（你做了一个有趣的梦，想和主人说。）',
+            '（你发现了一朵很漂亮的花，想告诉主人。）'
+        ];
+        prompt = topics[Math.floor(Math.random() * topics.length)];
+    } else if (random === 3) {
+        if (currentMood < 30) {
+            prompt = '（你现在心情很低落，想和主人说说心里话，或者只是轻轻叹气。）';
+        } else if (currentMood > 70) {
+            prompt = '（你现在心情很好，想主动和主人分享你的开心。）';
+        } else {
+            prompt = '（你想确认主人还在，轻轻叫了一声。）';
+        }
+    } else {
+        const hour = new Date().getHours();
+        if (hour >= 23 || hour < 5) {
+            prompt = '（已经很晚了，你担心主人还没睡，想催主人休息。）';
+        } else if (hour >= 11 && hour < 13) {
+            prompt = '（午饭时间，你想提醒主人吃饭。）';
+        } else if (hour >= 17 && hour < 19) {
+            prompt = '（傍晚了，你想提醒主人吃晚饭。）';
+        } else {
+            prompt = '（你想提醒主人注意休息，喝点水。）';
+        }
+    }
+
+    isWaitingReply = true;
+    const rawReply = await callAI(prompt);
+    const { emotion, moodDelta, text } = parseReply(rawReply);
+
+    showSpeech(text);
+    setEmotion(emotion);
+    if (moodDelta !== 0) changeMood(moodDelta);
+    pushHistory('assistant', rawReply);
+    isWaitingReply = false;
+}
+
+function triggerIdleAction() {
+    if (isWaitingReply) return;
+    if (!live2dModel) return;
+    if (Date.now() - lastInteractionTime < 15000) return;
+
+    const random = Math.random();
+
+    if (random < 0.15) {
+        const time = getTimePeriod();
+        if (time.sleepy || currentMood < 40) {
+            setEmotion('sleepy');
+            triggerYawn();
+            setTimeout(() => {
+                const info = getMoodInfo(currentMood);
+                setEmotion(info.emotion);
+            }, 3000);
+        }
+    } else if (random < 0.3) {
+        triggerLookAround();
+    } else if (random < 0.45) {
+        if (currentMood > 50) {
+            setEmotion('shy');
+            setTimeout(() => {
+                const info = getMoodInfo(currentMood);
+                setEmotion(info.emotion);
+            }, 2500);
+        }
+    } else if (random < 0.6) {
+        const drift = (Math.random() - 0.5) * 4;
+        changeMood(drift);
+    } else if (random < 0.75) {
+        triggerStretch();
+    } else if (random < 0.85) {
+        if (currentMood < 45) {
+            triggerSigh();
+        }
+    } else {
+        triggerLookAround();
+    }
+}
+
+function triggerYawn() {
+    if (!live2dModel || !live2dModel.internalModel) return;
+    const model = live2dModel.internalModel.coreModel;
+    let phase = 0;
+    const yawnAnim = setInterval(() => {
+        phase += 0.05;
+        if (phase > Math.PI) {
+            clearInterval(yawnAnim);
+            return;
+        }
+        const val = Math.sin(phase);
+        setParam(model, 'ParamMouthOpenY', val * 0.8);
+    }, 50);
+}
+
+function triggerLookAround() {
+    autoAnim.eyeTargetX = (Math.random() - 0.5) * 2;
+    autoAnim.eyeTargetY = (Math.random() - 0.5) * 1.5;
+    autoAnim.lastEyeChangeTime = Date.now();
+    autoAnim.headTargetX = autoAnim.eyeTargetX * 15;
+    autoAnim.headTargetY = autoAnim.eyeTargetY * 10;
+    autoAnim.lastHeadChangeTime = Date.now();
+}
+
+function triggerStretch() {
+    autoAnim.armTarget = 1;
+    autoAnim.lastArmChangeTime = Date.now() + 5000;
+    setTimeout(() => { autoAnim.armTarget = 0; }, 3000);
+}
+
+function triggerSigh() {
+    if (!live2dModel || !live2dModel.internalModel) return;
+    const model = live2dModel.internalModel.coreModel;
+    autoAnim.headTargetY = -10;
+    autoAnim.lastHeadChangeTime = Date.now();
+    let phase = 0;
+    const sighAnim = setInterval(() => {
+        phase += 0.03;
+        if (phase > Math.PI) {
+            clearInterval(sighAnim);
+            return;
+        }
+        setParam(model, 'ParamMouthOpenY', Math.sin(phase) * 0.3);
+    }, 50);
+}
+</script>
+
+<script>
+// ==================== 设置相关（精简版不显示但保留函数） ====================
+
+function openSettings() {}
+function closeSettings() {}
+function saveSettings() {}
+function testConnection() {}
+function reloadModel() {}
+function openHistory() {}
+function closeHistory() {}
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+function clearAllData() {}
+function showModelPicker() {}
+</script>
+
+<script>
+// ==================== 初始化启动 ====================
+
+document.addEventListener('pointerdown', markInteraction);
+document.addEventListener('keydown', markInteraction);
+
+async function init() {
+    loadMoodData();
+    updateAffectionBadge();
+    updateMoodBadge();
+
+    fetchWeather();
+    await initLive2D();
+    initBehaviorTimers();
+    startMoodDecay();
+    applyTimeMoodEffect();
+
+    // 悬浮窗模式：启动后自动打招呼
+    setTimeout(() => {
+        sendWelcomeGreeting();
+    }, 2000);
+}
+
+async function sendWelcomeGreeting() {
+    const settings = getSettings();
+    if (!settings.apiUrl || !settings.apiKey) {
+        showSpeech('主人……请先在设置里填写API……');
+        return;
+    }
+
+    if (isWaitingReply) return;
+    isWaitingReply = true;
+
+    const history = getHistory();
+    const time = getTimePeriod();
+    let prompt = '';
+
+    if (history.length === 0) {
+        prompt = '（这是你第一次见到主人，请做一个害羞紧张的自我介绍。）';
+    } else {
+        let weatherHint = '';
+        if (weatherData.loaded) {
+            weatherHint = `外面${weatherData.condition}，${weatherData.temp}°C。`;
+        }
+        prompt = `（主人回来了，现在是${time.period}，${getTimeStr()}。${weatherHint}请根据时间和天气打招呼，表示你一直在等主人。如果天气特殊可以提醒一下。）`;
+    }
+
+    const rawReply = await callAI(prompt);
+    const { emotion, moodDelta, text } = parseReply(rawReply);
+
+    showSpeech(text);
+    setEmotion(emotion);
+    if (moodDelta !== 0) changeMood(moodDelta);
+    pushHistory('assistant', rawReply);
+    changeMood(+3);
+
+    isWaitingReply = false;
+}
+
+// ===== APK悬浮窗点击入口 =====
+function onPetClicked() {
+    onModelTap();
+}
+
+window.addEventListener('load', () => {
+    init();
+});
+</script>
 </body>
 </html>
-
