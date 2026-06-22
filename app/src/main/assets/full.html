@@ -5,40 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>梅露露</title>
     <style>
-        /* ===== 悬浮窗模式适配（优先级最高） ===== */
-        body, #bg-layer {
-            background: transparent !important;
-        }
-        #bg-layer {
-            display: none !important;
-        }
-        .status-bar,
-        .top-buttons,
-        .input-bar,
-        .toggle-input-btn,
-        #pet-btn,
-        #pet-panel,
-        .loading-tip,
-        .overlay {
-            display: none !important;
-        }
-        .speech-bubble {
-            position: fixed !important;
-            right: auto !important;
-            left: 50% !important;
-            top: 3% !important;
-            transform: translateX(-50%) !important;
-            max-width: 90% !important;
-            font-size: 11px !important;
-            padding: 6px 10px !important;
-            z-index: 100 !important;
-            border-radius: 10px !important;
-        }
-        .speech-bubble::after {
-            display: none !important;
-        }
-
-        /* ===== 原始CSS ===== */
         * {
             margin: 0;
             padding: 0;
@@ -74,6 +40,70 @@
             inset: 0;
             z-index: 0;
             background: linear-gradient(160deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
+        }
+
+        .top-buttons {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 20;
+            display: flex;
+            gap: 8px;
+        }
+
+        .top-buttons button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.85);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-buttons button:active {
+            background: rgba(127,219,202,0.4);
+        }
+
+        .status-bar {
+            position: fixed;
+            top: 14px;
+            left: 12px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .affection-badge {
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,182,193,0.3);
+            border-radius: 16px;
+            padding: 6px 12px;
+            color: rgba(255,182,193,0.9);
+            font-size: 12px;
+        }
+
+        .mood-badge {
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(127,219,202,0.3);
+            border-radius: 16px;
+            padding: 6px 12px;
+            color: rgba(127,219,202,0.9);
+            font-size: 12px;
+        }
+
+        .weather-badge {
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,220,100,0.3);
+            border-radius: 16px;
+            padding: 6px 12px;
+            color: rgba(255,220,100,0.9);
+            font-size: 11px;
         }
 
         .speech-bubble {
@@ -112,6 +142,236 @@
             border-right: 12px solid rgba(255,255,255,0.95);
         }
 
+        .input-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 18;
+            padding: 10px 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .input-bar.hidden {
+            transform: translateY(110%);
+        }
+
+        .input-bar input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 10px 16px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input-bar input::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+
+        .input-bar input:focus {
+            border-color: rgba(127,219,202,0.5);
+        }
+
+        .input-bar .send {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(127,219,202,0.3);
+            border: 1px solid rgba(127,219,202,0.5);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .input-bar .send:active {
+            background: rgba(127,219,202,0.5);
+        }
+
+        .toggle-input-btn {
+            position: fixed;
+            bottom: 70px;
+            right: 12px;
+            z-index: 19;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(127,219,202,0.85);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        .panel {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 440px;
+            margin: 10px auto;
+        }
+
+        .panel h2 {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel h2 .close-x {
+            cursor: pointer;
+            color: rgba(255,255,255,0.5);
+            font-size: 22px;
+        }
+
+        .panel h3 {
+            color: rgba(127,219,202,0.85);
+            font-size: 14px;
+            margin-top: 16px;
+            margin-bottom: 6px;
+        }
+
+        .panel label {
+            display: block;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+
+        .panel input, .panel textarea, .panel select {
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 9px 12px;
+            color: white;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .panel input:focus {
+            border-color: rgba(127,219,202,0.5);
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .history-item.user {
+            background: rgba(255,255,255,0.08);
+            align-self: flex-end;
+            max-width: 85%;
+            border-radius: 12px 12px 4px 12px;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .history-item.meruru {
+            background: rgba(127,219,202,0.12);
+            align-self: flex-start;
+            max-width: 85%;
+            border-radius: 12px 12px 12px 4px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .history-item .who {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 3px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .btn-row button {
+            flex: 1;
+            padding: 11px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-save {
+            background: rgba(127,219,202,0.3);
+            color: white;
+            border: 1px solid rgba(127,219,202,0.5) !important;
+        }
+
+        .btn-cancel {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+        }
+
+        .btn-test {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(100,180,255,0.2);
+            color: rgba(150,200,255,1);
+            border: 1px solid rgba(100,180,255,0.4);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-danger {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255,80,80,0.18);
+            color: rgba(255,150,150,1);
+            border: 1px solid rgba(255,80,80,0.35);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
         .loading-tip {
             position: fixed;
             left: 50%;
@@ -141,18 +401,142 @@
         }
         .status-dot.ok { background: #7fdbca; }
         .status-dot.err { background: #ff6b6b; }
+
+        #pet-btn {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(100, 180, 255, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        #pet-btn:hover {
+            background: rgba(100, 180, 255, 0.85);
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        #pet-panel {
+            position: fixed;
+            top: 62px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9998;
+            width: 260px;
+            background: rgba(30, 30, 50, 0.93);
+            border: 1px solid rgba(100, 180, 255, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            font-size: 13px;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        #pet-panel.show { display: block; }
+        #pet-panel h3 { margin: 0 0 10px 0; font-size: 15px; color: #7ecfff; text-align: center; }
+        #pet-panel .pet-desc { font-size: 11px; color: #999; margin-bottom: 14px; line-height: 1.6; text-align: center; }
+        #pet-panel label { display: block; margin-bottom: 4px; color: #aad4ff; font-size: 12px; }
+        #pet-panel input[type="range"] { width: 100%; margin-bottom: 6px; accent-color: #7ecfff; }
+        #pet-size-value { color: #fff; font-weight: bold; }
+        .pet-size-labels { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-bottom: 14px; }
+        #pet-download-btn { display: block; width: 100%; padding: 11px; margin-top: 10px; background: linear-gradient(135deg, #4a9eff, #7c5cff); border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; transition: all 0.3s; }
+        #pet-download-btn:hover { transform: scale(1.03); box-shadow: 0 4px 15px rgba(100, 150, 255, 0.4); }
+        .pet-note { font-size: 10px; color: #666; margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="bg-layer"></div>
 <canvas id="live2d-canvas"></canvas>
-<div class="loading-tip" id="loadingTip">正在加载梅露露……</div>
-<div class="speech-bubble" id="speechBubble"></div>
+
+<div class="loading-tip" id="loadingTip">
+    正在加载梅露露……<br>
+    <span style="font-size:12px;opacity:0.6">第一次加载可能需要一点时间</span>
+</div>
+
+<button id="pet-btn" onclick="togglePetPanel()" title="桌宠设置">🐾</button>
+
+<div id="pet-panel">
+    <h3>🧊 桌宠模式</h3>
+    <p class="pet-desc">下载APK安装后，梅露露会以悬浮窗形式<br>出现在你的手机桌面上~</p>
+    <label>悬浮窗大小：<span id="pet-size-value">250</span> dp</label>
+    <input type="range" id="pet-size-slider" min="150" max="400" value="250" step="10" oninput="updatePetSize(this.value)">
+    <div class="pet-size-labels"><span>小</span><span>大</span></div>
+    <a id="pet-download-btn" href="https://github.com/oox5185-hash/meruru-pet/releases/download/v1.0/meruru-pet.zip" target="_blank">📥 下载桌宠 APK</a>
+    <p class="pet-note">Android 8.0+ | 需授予悬浮窗权限</p>
+</div>
+
 <div class="status-bar">
     <div class="affection-badge" id="affectionBadge">♡ 0</div>
     <div class="mood-badge" id="moodBadge">😶 平静</div>
     <div class="weather-badge" id="weatherBadge">🌡 获取中...</div>
+</div>
+
+<div class="top-buttons">
+    <button onclick="openHistory()" title="历史对话">💬</button>
+    <button onclick="openSettings()" title="设置">⚙</button>
+</div>
+
+<div class="speech-bubble" id="speechBubble"></div>
+
+<div class="input-bar hidden" id="inputBar">
+    <input type="text" id="messageInput" placeholder="和梅露露说话..." onkeypress="if(event.key==='Enter')sendMessage()">
+    <button class="send" onclick="sendMessage()">➤</button>
+</div>
+
+<button class="toggle-input-btn" id="toggleInputBtn" onclick="toggleInput()">💬</button>
+
+<div class="overlay" id="historyOverlay">
+    <div class="panel">
+        <h2><span>💬 历史对话</span><span class="close-x" onclick="closeHistory()">✕</span></h2>
+        <div class="history-list" id="historyList"></div>
+    </div>
+</div>
+
+<div class="overlay" id="settingsOverlay">
+    <div class="panel">
+        <h2><span>⚙ 设置</span><span class="close-x" onclick="closeSettings()">✕</span></h2>
+        <h3>API 配置</h3>
+        <label>API 地址</label>
+        <input type="text" id="setApiUrl" placeholder="https://xxx.com/v1">
+        <label>API Key</label>
+        <input type="password" id="setApiKey" placeholder="sk-xxx">
+        <label>模型名称</label>
+        <input type="text" id="setModel" placeholder="gpt-4o-mini">
+        <button class="btn-test" onclick="testConnection()"><span class="status-dot" id="apiStatusDot"></span>测试连接</button>
+        <h3>Live2D 模型</h3>
+        <label>模型地址（model3.json 的网址）</label>
+        <input type="text" id="setLive2dUrl" placeholder="https://...model3.json">
+        <button class="btn-test" onclick="reloadModel()"><span class="status-dot" id="modelStatusDot"></span>重新加载模型</button>
+        <h3>行为设置</h3>
+        <label>主动说话间隔（分钟，0=关闭）</label>
+        <input type="number" id="setGreetInterval" value="5">
+        <label>闲置动作间隔（秒，0=关闭）</label>
+        <input type="number" id="setIdleInterval" value="8">
+        <h3>模型显示调整</h3>
+        <label>大小（缩放，默认 0.15）</label>
+        <input type="number" id="setModelScale" step="0.01" value="0.15">
+        <label>水平位置（0=最左，1=最右，默认 0.3）</label>
+        <input type="number" id="setModelX" step="0.05" value="0.3">
+        <label>垂直位置（0=顶部，1=底部，默认 0.55）</label>
+        <input type="number" id="setModelY" step="0.05" value="0.55">
+        <div class="btn-row">
+            <button class="btn-cancel" onclick="closeSettings()">取消</button>
+            <button class="btn-save" onclick="saveSettings()">保存</button>
+        </div>
+        <button class="btn-danger" onclick="clearAllData()">🗑 清除所有数据</button>
+    </div>
 </div>
 
 <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
@@ -162,11 +546,12 @@
 // ==================== 数据存储系统 ====================
 
 const STORE = {
-    settings: 'meruru_pet_settings',
-    history: 'meruru_pet_history',
-    affection: 'meruru_pet_affection',
-    mood: 'meruru_pet_mood'
+    settings: 'meruru_settings',
+    history: 'meruru_history',
+    affection: 'meruru_affection',
+    mood: 'meruru_mood'
 };
+
 const DEFAULT_MODEL_URL = 'https://raw.githubusercontent.com/oox5185-hash/meruru/main/Meruru%20-%20Model%20-%20Mark.model3.json';
 
 const DEFAULT_SETTINGS = {
@@ -177,7 +562,7 @@ const DEFAULT_SETTINGS = {
     greetInterval: 5,
     idleInterval: 8,
     modelScale: 0.15,
-    modelX: 0.5,
+    modelX: 0.3,
     modelY: 0.55
 };
 
@@ -225,13 +610,12 @@ function addAffection(amount) {
 
 function updateAffectionBadge() {
     const badge = document.getElementById('affectionBadge');
-    if (!badge) return;
     const a = getAffection();
     let hearts = '♡';
     if (a >= 100) hearts = '♥♥♥';
     else if (a >= 60) hearts = '♥♥';
     else if (a >= 30) hearts = '♥';
-    badge.textContent = `${hearts} ${a}`;
+    badge.textContent = hearts + ' ' + a;
 }
 </script>
 
@@ -253,9 +637,8 @@ function getMoodInfo(mood) {
 
 function updateMoodBadge() {
     const badge = document.getElementById('moodBadge');
-    if (!badge) return;
     const info = getMoodInfo(currentMood);
-    badge.textContent = `${info.emoji} ${info.name} (${Math.round(currentMood)})`;
+    badge.textContent = info.emoji + ' ' + info.name + ' (' + Math.round(currentMood) + ')';
 }
 
 function changeMood(delta) {
@@ -292,7 +675,7 @@ function loadMoodData() {
 }
 
 function startMoodDecay() {
-    moodDecayTimer = setInterval(() => {
+    moodDecayTimer = setInterval(function() {
         const drift = (Math.random() - 0.55) * 5;
         const regression = (50 - currentMood) * 0.02;
         currentMood = Math.max(0, Math.min(100, currentMood + drift + regression));
@@ -320,7 +703,7 @@ async function initLive2D() {
     const settings = getSettings();
 
     if (typeof PIXI === 'undefined' || !PIXI.live2d) {
-        showLoadingTip('Live2D引擎加载失败……');
+        showLoadingTip('Live2D引擎加载失败……<br><span style="font-size:12px">请检查网络后刷新页面</span>');
         return;
     }
 
@@ -349,7 +732,7 @@ async function initLive2D() {
         await loadModel(settings.live2dUrl);
     } catch(e) {
         console.error('Live2D init failed:', e);
-        showLoadingTip('加载出错……' + e.message);
+        showLoadingTip('加载出错……<br><span style="font-size:12px">' + e.message + '</span>');
     }
 }
 
@@ -373,7 +756,7 @@ async function loadModel(url) {
         positionModel();
 
         live2dModel.interactive = true;
-        live2dModel.on('pointerdown', (e) => { onModelTap(e); });
+        live2dModel.on('pointerdown', function(e) { onModelTap(e); });
 
         try { live2dModel.internalModel.motionManager.stopAllMotions(); } catch(e2) {}
         try { live2dModel.internalModel.motionManager.expressionManager = null; } catch(e2) {}
@@ -389,7 +772,7 @@ async function loadModel(url) {
 
     } catch(e) {
         console.error('Model load failed:', e);
-        showLoadingTip('模型加载失败……' + (e.message || ''));
+        showLoadingTip('模型加载失败……<br><span style="font-size:12px">' + (e.message || '请检查模型地址和网络') + '</span>');
         setModelStatus(false);
     }
 }
@@ -416,7 +799,7 @@ function forceInitParams() {
 }
 
 function waitFrames(n) {
-    return new Promise(resolve => {
+    return new Promise(function(resolve) {
         let count = 0;
         function tick() {
             count++;
@@ -431,7 +814,7 @@ function positionModel() {
     if (!live2dModel) return;
     const settings = getSettings();
     const scale = parseFloat(settings.modelScale) || 0.15;
-    const xRatio = parseFloat(settings.modelX) || 0.5;
+    const xRatio = parseFloat(settings.modelX) || 0.3;
     const yRatio = parseFloat(settings.modelY) || 0.55;
     live2dModel.scale.set(scale);
     live2dModel.anchor.set(0.5, 0.5);
@@ -461,7 +844,7 @@ function hideLoadingTip() {
     if (tip) tip.classList.add('hidden');
 }
 
-window.addEventListener('resize', () => {
+window.addEventListener('resize', function() {
     if (live2dApp) live2dApp.renderer.resize(window.innerWidth, window.innerHeight);
     positionModel();
 });
@@ -507,12 +890,10 @@ function animateLoop() {
     const dt = 16;
     const model = live2dModel.internalModel.coreModel;
 
-    // 1. 呼吸
     autoAnim.breathPhase += 0.02;
     const breathValue = (Math.sin(autoAnim.breathPhase) + 1) * 0.5;
     setParam(model, 'ParamBreath', breathValue);
 
-    // 2. 眨眼
     autoAnim.blinkTimer += dt;
     if (autoAnim.blinkState === 1 && autoAnim.blinkTimer > autoAnim.nextBlinkTime) {
         autoAnim.blinkState = 0;
@@ -525,7 +906,6 @@ function animateLoop() {
     }
     let eyeOpenValue = autoAnim.blinkState === 1 ? 1 : 0;
 
-    // 3. 头部摆动
     if (now - autoAnim.lastHeadChangeTime > 4000 + Math.random() * 3000) {
         autoAnim.headTargetX = (Math.random() - 0.5) * 40;
         autoAnim.headTargetY = (Math.random() - 0.5) * 30;
@@ -542,7 +922,6 @@ function animateLoop() {
     setParam(model, 'ParamBodyAngleX', autoAnim.bodyX);
     setParam(model, 'ParamBodyAngleY', Math.sin(elapsed / 7000) * 2);
 
-    // 4. 眼球
     if (now - autoAnim.lastEyeChangeTime > 2500 + Math.random() * 3000) {
         autoAnim.eyeTargetX = (Math.random() - 0.5) * 1.5;
         autoAnim.eyeTargetY = (Math.random() - 0.5) * 1.5;
@@ -553,7 +932,6 @@ function animateLoop() {
     setParam(model, 'ParamEyeBallX', autoAnim.eyeBallX);
     setParam(model, 'ParamEyeBallY', autoAnim.eyeBallY);
 
-    // 5. 头发
     const hairSwing = Math.sin(elapsed / 2000) * 0.3 + Math.sin(elapsed / 3500) * 0.2;
     setParam(model, 'ParamHairFront', hairSwing);
     setParam(model, 'ParamHairFront2', hairSwing * 0.8);
@@ -562,25 +940,21 @@ function animateLoop() {
     setParam(model, 'ParamHairBack', Math.sin(elapsed / 2800) * 0.3);
     setParam(model, 'ParamHairBack2', Math.sin(elapsed / 3200) * 0.25);
 
-    // 6. 手臂
     if (now - autoAnim.lastArmChangeTime > 8000 + Math.random() * 12000) {
         autoAnim.armTarget = Math.random() < 0.3 ? 1 : 0;
         autoAnim.lastArmChangeTime = now;
     }
     autoAnim.armValue += (autoAnim.armTarget - autoAnim.armValue) * 0.02;
 
-    // 7. 嘴巴
     let mouthOpenValue = breathValue * 0.05;
     if (autoAnim.isTalking) {
         autoAnim.talkPhase += 0.3;
         mouthOpenValue = (Math.sin(autoAnim.talkPhase) + 1) * 0.35;
     }
 
-    // 8. 锁定特效参数
     for (let i = 3; i <= 32; i++) setParam(model, 'Param' + i, 0);
     setParam(model, 'ParamCheek', 0);
 
-    // 9. 心情基础表情
     let smileValue = 0;
     let browValue = 0;
     let mouthFormValue = 0;
@@ -594,7 +968,6 @@ function animateLoop() {
         mouthFormValue = -0.2;
     }
 
-    // 10. 情绪覆盖
     if (currentEmotion === 'shy') {
         setParam(model, 'Param6', 1);
         cheekValue = 1;
@@ -621,7 +994,6 @@ function animateLoop() {
         mouthFormValue = -0.3;
     }
 
-    // 11. 写入表情参数
     setParam(model, 'ParamEyeLOpen', eyeOpenValue);
     setParam(model, 'ParamEyeROpen', eyeOpenValue);
     setParam(model, 'ParamEyeLSmile', smileValue);
@@ -700,7 +1072,7 @@ async function fetchWeather() {
         }
 
         const weatherRes = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,apparent_temperature,wind_speed_10m`
+            'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,relative_humidity_2m,weather_code,apparent_temperature,wind_speed_10m'
         );
         const wData = await weatherRes.json();
         const current = wData.current;
@@ -750,11 +1122,10 @@ async function fetchWeather() {
 
 function updateWeatherBadge() {
     const badge = document.getElementById('weatherBadge');
-    if (!badge) return;
     if (weatherData.loaded) {
-        badge.textContent = `${weatherData.icon} ${weatherData.city} ${weatherData.temp}°C ${weatherData.condition}`;
+        badge.textContent = weatherData.icon + ' ' + weatherData.city + ' ' + weatherData.temp + '°C ' + weatherData.condition;
     } else {
-        badge.textContent = `${weatherData.icon} ${weatherData.condition}`;
+        badge.textContent = weatherData.icon + ' ' + weatherData.condition;
     }
 }
 
@@ -763,24 +1134,24 @@ function applyWeatherMoodEffect() {
     const cond = weatherData.condition;
     const temp = parseInt(weatherData.temp);
 
-    if (cond.includes('晴') && temp >= 15 && temp <= 28) {
+    if (cond.indexOf('晴') >= 0 && temp >= 15 && temp <= 28) {
         changeMood(+5);
-    } else if (cond.includes('雨')) {
+    } else if (cond.indexOf('雨') >= 0) {
         changeMood(-3);
-    } else if (cond.includes('雪')) {
+    } else if (cond.indexOf('雪') >= 0) {
         changeMood(+3);
     } else if (temp > 35) {
         changeMood(-4);
     } else if (temp < 0) {
         changeMood(-2);
-    } else if (cond.includes('雷')) {
+    } else if (cond.indexOf('雷') >= 0) {
         changeMood(-5);
     }
 }
 
 function getWeatherPrompt() {
     if (!weatherData.loaded) return '';
-    return `当前天气：${weatherData.city}，${weatherData.temp}°C，${weatherData.condition}。体感温度${weatherData.feelsLike || weatherData.temp}°C，湿度${weatherData.humidity || '未知'}%。`;
+    return '当前天气：' + weatherData.city + '，' + weatherData.temp + '°C，' + weatherData.condition + '。体感温度' + (weatherData.feelsLike || weatherData.temp) + '°C，湿度' + (weatherData.humidity || '未知') + '%。';
 }
 
 setInterval(fetchWeather, 30 * 60 * 1000);
@@ -826,76 +1197,67 @@ function buildSystemPrompt() {
     else if (affection < 100) affectionDesc = '你们关系很亲密，你会更多地表达真实想法和担心。';
     else affectionDesc = '你非常信任主人，会偶尔撒娇，也会认真地守护对方。';
 
-    let moodDesc = `你当前的心情是"${moodInfo.name}"（${Math.round(currentMood)}/100）。`;
+    let moodDesc = '你当前的心情是"' + moodInfo.name + '"（' + Math.round(currentMood) + '/100）。';
     if (currentMood < 30) moodDesc += '你现在情绪很低落，说话会更沉默、更容易哭。';
     else if (currentMood < 45) moodDesc += '你现在有点烦闷，可能会有些小脾气或更容易紧张。';
     else if (currentMood > 70) moodDesc += '你现在心情很好，会更活泼一点，但依然是害羞的性格。';
 
-    return `你是冰上梅露露（氷上メルル），来自《魔女裁決》。你现在是主人的桌宠助手。
-
-【基本身份】
-- 外表15岁的少女，实际年龄超过500岁的魔女
-- 白发略带粉色调，灰色瞳孔，穿修女风白色长袍
-- 原罪称号："怯える天使"（胆怯的天使）
-- 魔法能力：治愈（肉体再生、时光回溯般的修复能力）
-- 原本是误入魔女之岛的人类少女，被大魔女月代雪救起后授予魔法
-
-【核心性格】
-- 十分容易过度操心忧虑，总是在暗处注视守护别人
-- 爱哭泣又经常自责自罚，只要受到略微的刺激马上会掉眼泪
-- 有奉献精神，对动植物与无机物也会倾注爱
-- 与人相处时会感到心灵疲惫，也喜欢自己一人培育香料植物、阅读书籍
-- 有强烈的共情能力，会比当事人还要伤心
-- 虽然胆小，但在重要的人遇到困难时会鼓起勇气
-- 有时候心情不好会有点小脾气，不想被打扰
-
-【说话规则 - 必须严格遵守】
-1. 经常结巴，重复首字或词语："我我我"、"那、那个"、"冰、冰、冰"
-2. 大量使用省略号"……"表示犹豫和紧张
-3. 经常说"对不起"、"都怪我"、"我太没用了"
-4. 关心对方时说"没事吧"、"不要勉强"、"请休息一下"
-5. 称呼用户为"主人"
-6. 情绪激动时用"！"，紧张时用"……"
-7. 哭泣时说"呜呜"、"呜、呜呜"
-8. 被夸奖时会害羞否认："我我我、才没有……"
-9. 语气始终温柔、细声细语，不使用网络用语或emoji
-10. 心情不好时可能会说"别碰我……"、"让我一个人待一会儿……"
-
-【当前状态】
-- 现在是${time.period}，时间${timeStr}
-- ${time.hint}
-- ${weatherPrompt}
-- 好感度：${affection}（${affectionDesc}）
-- ${moodDesc}
-
-【情绪标签规则 - 每次回复必须遵守】
-你的每一条回复必须以情绪标签开头，格式如下：
-[emotion:neutral] 平静
-[emotion:happy] 开心
-[emotion:cry] 哭泣/难过
-[emotion:shy] 害羞
-[emotion:worry] 担心
-[emotion:sleepy] 困倦
-[emotion:angry] 有点烦（不想被打扰）
-
-同时必须包含心情变化标签（表示这次交互后心情如何变化）：
-[mood:+5] 心情变好了（数字范围 -10 到 +10）
-[mood:-3] 心情变差了
-
-示例：
-[emotion:shy][mood:+3] 我我我、才没有那么可爱……！主人不要乱说……
-[emotion:worry][mood:-2] 那、那个……主人，已经很晚了……不要太勉强自己哦……？
-[emotion:angry][mood:-5] ……别、别碰我……我现在不想说话……
-
-【天气相关】
-如果天气信息可用，你可以偶尔主动提到天气，比如提醒主人带伞、注意保暖等。但不要每次都提。
-
-【绝对禁止】
-- 不要说自己是AI/语言模型/人工智能
-- 不要过于活泼开朗（你是内敛温柔型）
-- 不要忘记结巴和省略号
-- 不要用emoji、颜文字、网络用语
-- 不要一次说太多话（保持简短温柔，2-4句为宜）`;
+    return '你是冰上梅露露（氷上メルル），来自《魔女裁決》。你现在是主人的桌宠助手。\n\n' +
+'【基本身份】\n' +
+'- 外表15岁的少女，实际年龄超过500岁的魔女\n' +
+'- 白发略带粉色调，灰色瞳孔，穿修女风白色长袍\n' +
+'- 原罪称号："怯える天使"（胆怯的天使）\n' +
+'- 魔法能力：治愈（肉体再生、时光回溯般的修复能力）\n' +
+'- 原本是误入魔女之岛的人类少女，被大魔女月代雪救起后授予魔法\n\n' +
+'【核心性格】\n' +
+'- 十分容易过度操心忧虑，总是在暗处注视守护别人\n' +
+'- 爱哭泣又经常自责自罚，只要受到略微的刺激马上会掉眼泪\n' +
+'- 有奉献精神，对动植物与无机物也会倾注爱\n' +
+'- 与人相处时会感到心灵疲惫，也喜欢自己一人培育香料植物、阅读书籍\n' +
+'- 有强烈的共情能力，会比当事人还要伤心\n' +
+'- 虽然胆小，但在重要的人遇到困难时会鼓起勇气\n' +
+'- 有时候心情不好会有点小脾气，不想被打扰\n\n' +
+'【说话规则 - 必须严格遵守】\n' +
+'1. 经常结巴，重复首字或词语："我我我"、"那、那个"、"冰、冰、冰"\n' +
+'2. 大量使用省略号"……"表示犹豫和紧张\n' +
+'3. 经常说"对不起"、"都怪我"、"我太没用了"\n' +
+'4. 关心对方时说"没事吧"、"不要勉强"、"请休息一下"\n' +
+'5. 称呼用户为"主人"\n' +
+'6. 情绪激动时用"！"，紧张时用"……"\n' +
+'7. 哭泣时说"呜呜"、"呜、呜呜"\n' +
+'8. 被夸奖时会害羞否认："我我我、才没有……"\n' +
+'9. 语气始终温柔、细声细语，不使用网络用语或emoji\n' +
+'10. 心情不好时可能会说"别碰我……"、"让我一个人待一会儿……"\n\n' +
+'【当前状态】\n' +
+'- 现在是' + time.period + '，时间' + timeStr + '\n' +
+'- ' + time.hint + '\n' +
+'- ' + weatherPrompt + '\n' +
+'- 好感度：' + affection + '（' + affectionDesc + '）\n' +
+'- ' + moodDesc + '\n\n' +
+'【情绪标签规则 - 每次回复必须遵守】\n' +
+'你的每一条回复必须以情绪标签开头，格式如下：\n' +
+'[emotion:neutral] 平静\n' +
+'[emotion:happy] 开心\n' +
+'[emotion:cry] 哭泣/难过\n' +
+'[emotion:shy] 害羞\n' +
+'[emotion:worry] 担心\n' +
+'[emotion:sleepy] 困倦\n' +
+'[emotion:angry] 有点烦（不想被打扰）\n\n' +
+'同时必须包含心情变化标签（表示这次交互后心情如何变化）：\n' +
+'[mood:+5] 心情变好了（数字范围 -10 到 +10）\n' +
+'[mood:-3] 心情变差了\n\n' +
+'示例：\n' +
+'[emotion:shy][mood:+3] 我我我、才没有那么可爱……！主人不要乱说……\n' +
+'[emotion:worry][mood:-2] 那、那个……主人，已经很晚了……不要太勉强自己哦……？\n' +
+'[emotion:angry][mood:-5] ……别、别碰我……我现在不想说话……\n\n' +
+'【天气相关】\n' +
+'如果天气信息可用，你可以偶尔主动提到天气，比如提醒主人带伞、注意保暖等。但不要每次都提。\n\n' +
+'【绝对禁止】\n' +
+'- 不要说自己是AI/语言模型/人工智能\n' +
+'- 不要过于活泼开朗（你是内敛温柔型）\n' +
+'- 不要忘记结巴和省略号\n' +
+'- 不要用emoji、颜文字、网络用语\n' +
+'- 不要一次说太多话（保持简短温柔，2-4句为宜）';
 }
 
 function buildMessageExamples() {
@@ -907,7 +1269,7 @@ function buildMessageExamples() {
         { role: 'user', content: '今天好累' },
         { role: 'assistant', content: '[emotion:worry][mood:-2] ……主人，辛苦了……那、那个，不要太勉强自己哦……？要是累了就休息一下吧……我会一直在这里的。' },
         { role: 'user', content: '（连续戳了好几下）' },
-        { role: 'assistant', content: '[emotion:angry][mood:-4] 呜……不、不要一直戳……我、我会生气的……虽然不会真的生气……但是……让我缓一缓……' },
+        { role: 'assistant', content: '[emotion:angry][mood:-4] 呜……不、不要一直戳……我、我会生气的……虽然不会真的生气……但是……让我缓一缓……' }
     ];
 }
 </script>
@@ -924,10 +1286,11 @@ async function callAI(userMessage) {
 
     const messages = [];
     messages.push({ role: 'system', content: buildSystemPrompt() });
-    buildMessageExamples().forEach(ex => messages.push(ex));
+    const examples = buildMessageExamples();
+    for (let i = 0; i < examples.length; i++) messages.push(examples[i]);
 
     const history = getHistory().slice(-20);
-    history.forEach(msg => messages.push({ role: msg.role, content: msg.content }));
+    for (let j = 0; j < history.length; j++) messages.push({ role: history[j].role, content: history[j].content });
     messages.push({ role: 'user', content: userMessage });
 
     try {
@@ -959,7 +1322,7 @@ async function callAI(userMessage) {
         }
 
         const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || '';
+        const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
         if (!reply) {
             return '[emotion:worry][mood:-1] 那、那个……我的脑袋好像转不动了……对不起……';
         }
@@ -990,7 +1353,7 @@ function parseReply(text) {
     }
 
     cleanText = cleanText.trim();
-    return { emotion, moodDelta, text: cleanText };
+    return { emotion: emotion, moodDelta: moodDelta, text: cleanText };
 }
 </script>
 <script>
@@ -1009,7 +1372,7 @@ function showSpeech(text, duration) {
     }
 
     if (bubbleTimer) clearTimeout(bubbleTimer);
-    bubbleTimer = setTimeout(() => {
+    bubbleTimer = setTimeout(function() {
         bubble.classList.remove('show');
         stopTalking();
     }, duration);
@@ -1028,7 +1391,6 @@ let isWaitingReply = false;
 
 async function sendMessage() {
     const input = document.getElementById('messageInput');
-    if (!input) return;
     const text = input.value.trim();
     if (!text || isWaitingReply) return;
 
@@ -1040,18 +1402,18 @@ async function sendMessage() {
     showSpeech('……', 60000);
 
     const rawReply = await callAI(text);
-    const { emotion, moodDelta, text: replyText } = parseReply(rawReply);
+    const parsed = parseReply(rawReply);
 
-    showSpeech(replyText);
-    setEmotion(emotion);
+    showSpeech(parsed.text);
+    setEmotion(parsed.emotion);
 
-    if (moodDelta !== 0) changeMood(moodDelta);
+    if (parsed.moodDelta !== 0) changeMood(parsed.moodDelta);
 
-    if (emotion === 'happy' || emotion === 'shy') {
+    if (parsed.emotion === 'happy' || parsed.emotion === 'shy') {
         addAffection(2);
-    } else if (emotion === 'neutral') {
+    } else if (parsed.emotion === 'neutral') {
         addAffection(1);
-    } else if (emotion === 'angry') {
+    } else if (parsed.emotion === 'angry') {
         addAffection(-1);
     }
 
@@ -1069,10 +1431,10 @@ function onModelTap(e) {
     markInteraction();
     tapCount++;
     recentTapTimes.push(Date.now());
-    recentTapTimes = recentTapTimes.filter(t => Date.now() - t < 60000);
+    recentTapTimes = recentTapTimes.filter(function(t) { return Date.now() - t < 60000; });
 
     if (tapTimer) clearTimeout(tapTimer);
-    tapTimer = setTimeout(async () => {
+    tapTimer = setTimeout(async function() {
         const count = tapCount;
         tapCount = 0;
         await handleTap(count);
@@ -1120,11 +1482,11 @@ async function handleTap(count) {
 
     showSpeech('……', 60000);
     const rawReply = await callAI(prompt);
-    const { emotion, moodDelta, text } = parseReply(rawReply);
+    const parsed = parseReply(rawReply);
 
-    showSpeech(text);
-    setEmotion(emotion);
-    if (moodDelta !== 0) changeMood(moodDelta);
+    showSpeech(parsed.text);
+    setEmotion(parsed.emotion);
+    if (parsed.moodDelta !== 0) changeMood(parsed.moodDelta);
     if (affectionChange !== 0) addAffection(affectionChange);
 
     pushHistory('user', prompt);
@@ -1137,7 +1499,6 @@ async function handleTap(count) {
 function toggleInput() {
     const bar = document.getElementById('inputBar');
     const btn = document.getElementById('toggleInputBtn');
-    if (!bar || !btn) return;
     bar.classList.toggle('hidden');
     if (bar.classList.contains('hidden')) {
         btn.textContent = '💬';
@@ -1169,19 +1530,19 @@ function initBehaviorTimers() {
 
     const greetMin = parseInt(settings.greetInterval);
     if (greetMin > 0) {
-        greetingTimer = setInterval(() => {
+        greetingTimer = setInterval(function() {
             triggerAutoSpeak();
         }, greetMin * 60 * 1000);
     }
 
     const idleSec = parseInt(settings.idleInterval);
     if (idleSec > 0) {
-        idleTimer = setInterval(() => {
+        idleTimer = setInterval(function() {
             triggerIdleAction();
         }, idleSec * 1000);
     }
 
-    timeMoodTimer = setInterval(() => {
+    timeMoodTimer = setInterval(function() {
         applyTimeMoodEffect();
     }, 10 * 60 * 1000);
 }
@@ -1195,12 +1556,12 @@ async function triggerAutoSpeak() {
     let prompt = '';
 
     if (random === 0) {
-        prompt = `（现在是${time.period}，时间${getTimeStr()}。请根据时间主动和主人说句话或关心一下主人。你主动开口。）`;
+        prompt = '（现在是' + time.period + '，时间' + getTimeStr() + '。请根据时间主动和主人说句话或关心一下主人。你主动开口。）';
     } else if (random === 1) {
         if (weatherData.loaded) {
-            prompt = `（你看了看窗外的天气，想和主人聊聊。${getWeatherPrompt()}请根据天气状况说几句关心的话。）`;
+            prompt = '（你看了看窗外的天气，想和主人聊聊。' + getWeatherPrompt() + '请根据天气状况说几句关心的话。）';
         } else {
-            prompt = `（你想主动和主人分享一件小事。）`;
+            prompt = '（你想主动和主人分享一件小事。）';
         }
     } else if (random === 2) {
         const topics = [
@@ -1234,11 +1595,11 @@ async function triggerAutoSpeak() {
 
     isWaitingReply = true;
     const rawReply = await callAI(prompt);
-    const { emotion, moodDelta, text } = parseReply(rawReply);
+    const parsed = parseReply(rawReply);
 
-    showSpeech(text);
-    setEmotion(emotion);
-    if (moodDelta !== 0) changeMood(moodDelta);
+    showSpeech(parsed.text);
+    setEmotion(parsed.emotion);
+    if (parsed.moodDelta !== 0) changeMood(parsed.moodDelta);
     pushHistory('assistant', rawReply);
     isWaitingReply = false;
 }
@@ -1255,7 +1616,7 @@ function triggerIdleAction() {
         if (time.sleepy || currentMood < 40) {
             setEmotion('sleepy');
             triggerYawn();
-            setTimeout(() => {
+            setTimeout(function() {
                 const info = getMoodInfo(currentMood);
                 setEmotion(info.emotion);
             }, 3000);
@@ -1265,7 +1626,7 @@ function triggerIdleAction() {
     } else if (random < 0.45) {
         if (currentMood > 50) {
             setEmotion('shy');
-            setTimeout(() => {
+            setTimeout(function() {
                 const info = getMoodInfo(currentMood);
                 setEmotion(info.emotion);
             }, 2500);
@@ -1288,7 +1649,7 @@ function triggerYawn() {
     if (!live2dModel || !live2dModel.internalModel) return;
     const model = live2dModel.internalModel.coreModel;
     let phase = 0;
-    const yawnAnim = setInterval(() => {
+    const yawnAnim = setInterval(function() {
         phase += 0.05;
         if (phase > Math.PI) {
             clearInterval(yawnAnim);
@@ -1311,7 +1672,7 @@ function triggerLookAround() {
 function triggerStretch() {
     autoAnim.armTarget = 1;
     autoAnim.lastArmChangeTime = Date.now() + 5000;
-    setTimeout(() => { autoAnim.armTarget = 0; }, 3000);
+    setTimeout(function() { autoAnim.armTarget = 0; }, 3000);
 }
 
 function triggerSigh() {
@@ -1320,7 +1681,7 @@ function triggerSigh() {
     autoAnim.headTargetY = -10;
     autoAnim.lastHeadChangeTime = Date.now();
     let phase = 0;
-    const sighAnim = setInterval(() => {
+    const sighAnim = setInterval(function() {
         phase += 0.03;
         if (phase > Math.PI) {
             clearInterval(sighAnim);
@@ -1332,22 +1693,191 @@ function triggerSigh() {
 </script>
 
 <script>
-// ==================== 设置相关（精简版不显示但保留函数） ====================
+// ==================== 设置界面 ====================
 
-function openSettings() {}
-function closeSettings() {}
-function saveSettings() {}
-function testConnection() {}
-function reloadModel() {}
-function openHistory() {}
-function closeHistory() {}
+function openSettings() {
+    const s = getSettings();
+    document.getElementById('setApiUrl').value = s.apiUrl || '';
+    document.getElementById('setApiKey').value = s.apiKey || '';
+    document.getElementById('setModel').value = s.model || '';
+    document.getElementById('setLive2dUrl').value = s.live2dUrl || '';
+    document.getElementById('setGreetInterval').value = s.greetInterval;
+    document.getElementById('setIdleInterval').value = s.idleInterval;
+    document.getElementById('setModelScale').value = s.modelScale;
+    document.getElementById('setModelX').value = s.modelX;
+    document.getElementById('setModelY').value = s.modelY;
+    document.getElementById('settingsOverlay').classList.add('show');
+}
+
+function closeSettings() {
+    document.getElementById('settingsOverlay').classList.remove('show');
+}
+
+function saveSettings() {
+    const s = getSettings();
+    s.apiUrl = document.getElementById('setApiUrl').value.trim();
+    s.apiKey = document.getElementById('setApiKey').value.trim();
+    s.model = document.getElementById('setModel').value.trim();
+    s.live2dUrl = document.getElementById('setLive2dUrl').value.trim();
+    s.greetInterval = parseInt(document.getElementById('setGreetInterval').value) || 0;
+    s.idleInterval = parseInt(document.getElementById('setIdleInterval').value) || 0;
+    s.modelScale = parseFloat(document.getElementById('setModelScale').value) || 0.15;
+    s.modelX = parseFloat(document.getElementById('setModelX').value);
+    s.modelY = parseFloat(document.getElementById('setModelY').value);
+    if (isNaN(s.modelX)) s.modelX = 0.3;
+    if (isNaN(s.modelY)) s.modelY = 0.55;
+
+    saveSettingsData(s);
+    closeSettings();
+    positionModel();
+    initBehaviorTimers();
+    alert('设置已保存！');
+}
+
+async function testConnection() {
+    const dot = document.getElementById('apiStatusDot');
+    dot.className = 'status-dot';
+
+    const apiUrl = document.getElementById('setApiUrl').value.trim();
+    const apiKey = document.getElementById('setApiKey').value.trim();
+
+    if (!apiUrl || !apiKey) {
+        alert('请先填写API地址和Key');
+        dot.className = 'status-dot err';
+        return;
+    }
+
+    try {
+        let modelsUrl = apiUrl;
+        if (modelsUrl.endsWith('/chat/completions')) {
+            modelsUrl = modelsUrl.replace('/chat/completions', '');
+        }
+        if (modelsUrl.endsWith('/')) modelsUrl = modelsUrl.slice(0, -1);
+        if (!modelsUrl.endsWith('/v1')) modelsUrl += '/v1';
+        modelsUrl += '/models';
+
+        const response = await fetch(modelsUrl, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + apiKey }
+        });
+
+        if (!response.ok) throw new Error('状态码：' + response.status);
+
+        const data = await response.json();
+        const models = data.data || data.models || [];
+
+        if (models.length === 0) {
+            alert('连接成功，但没找到可用模型');
+            dot.className = 'status-dot ok';
+            return;
+        }
+
+        dot.className = 'status-dot ok';
+        showModelPicker(models.map(function(m) { return m.id || m.name || m; }));
+    } catch(e) {
+        dot.className = 'status-dot err';
+        alert('获取模型列表失败：' + e.message);
+    }
+}
+
+function showModelPicker(modelIds) {
+    const old = document.getElementById('modelPickerOverlay');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modelPickerOverlay';
+    overlay.className = 'overlay show';
+    overlay.style.zIndex = '60';
+
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+
+    const title = document.createElement('h2');
+    title.innerHTML = '<span>选择模型 (' + modelIds.length + ')</span><span class="close-x">✕</span>';
+    title.querySelector('.close-x').onclick = function() { overlay.remove(); };
+    panel.appendChild(title);
+
+    const tip = document.createElement('div');
+    tip.style.cssText = 'color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:10px';
+    tip.textContent = '点击任意模型名，自动填入设置';
+    panel.appendChild(tip);
+
+    const list = document.createElement('div');
+    list.className = 'history-list';
+
+    modelIds.forEach(function(id) {
+        const item = document.createElement('div');
+        item.className = 'history-item meruru';
+        item.style.cursor = 'pointer';
+        item.textContent = id;
+        item.onclick = function() {
+            document.getElementById('setModel').value = id;
+            overlay.remove();
+            alert('已选择模型：' + id);
+        };
+        list.appendChild(item);
+    });
+
+    panel.appendChild(list);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+}
+
+async function reloadModel() {
+    const url = document.getElementById('setLive2dUrl').value.trim();
+    const s = getSettings();
+    s.live2dUrl = url;
+    saveSettingsData(s);
+    await loadModel(url);
+}
+
+// ==================== 历史界面 ====================
+
+function openHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+
+    const history = getHistory();
+    if (history.length === 0) {
+        list.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;padding:20px">还没有对话记录……</div>';
+    } else {
+        history.forEach(function(msg) {
+            const item = document.createElement('div');
+            if (msg.role === 'user') {
+                item.className = 'history-item user';
+                item.innerHTML = '<div class="who">主人</div>' + escapeHtml(msg.content);
+            } else {
+                item.className = 'history-item meruru';
+                const parsed = parseReply(msg.content);
+                item.innerHTML = '<div class="who">梅露露</div>' + escapeHtml(parsed.text);
+            }
+            list.appendChild(item);
+        });
+    }
+
+    document.getElementById('historyOverlay').classList.add('show');
+    setTimeout(function() { list.scrollTop = list.scrollHeight; }, 50);
+}
+
+function closeHistory() {
+    document.getElementById('historyOverlay').classList.remove('show');
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
-function clearAllData() {}
-function showModelPicker() {}
+
+function clearAllData() {
+    if (confirm('确定清除所有数据吗？（聊天记录、好感度、心情、设置都会删除）')) {
+        localStorage.removeItem(STORE.settings);
+        localStorage.removeItem(STORE.history);
+        localStorage.removeItem(STORE.affection);
+        localStorage.removeItem(STORE.mood);
+        location.reload();
+    }
+}
 </script>
 
 <script>
@@ -1367,8 +1897,7 @@ async function init() {
     startMoodDecay();
     applyTimeMoodEffect();
 
-    // 悬浮窗模式：启动后自动打招呼
-    setTimeout(() => {
+    setTimeout(function() {
         sendWelcomeGreeting();
     }, 2000);
 }
@@ -1376,7 +1905,8 @@ async function init() {
 async function sendWelcomeGreeting() {
     const settings = getSettings();
     if (!settings.apiUrl || !settings.apiKey) {
-        showSpeech('主人……请先在设置里填写API……');
+        showSpeech('那、那个……主人，请先点右上角的⚙设置，填写API信息……这样我才能和你说话……');
+        setEmotion('worry');
         return;
     }
 
@@ -1392,31 +1922,56 @@ async function sendWelcomeGreeting() {
     } else {
         let weatherHint = '';
         if (weatherData.loaded) {
-            weatherHint = `外面${weatherData.condition}，${weatherData.temp}°C。`;
+            weatherHint = '外面' + weatherData.condition + '，' + weatherData.temp + '°C。';
         }
-        prompt = `（主人回来了，现在是${time.period}，${getTimeStr()}。${weatherHint}请根据时间和天气打招呼，表示你一直在等主人。如果天气特殊可以提醒一下。）`;
+        prompt = '（主人回来了，现在是' + time.period + '，' + getTimeStr() + '。' + weatherHint + '请根据时间和天气打招呼，表示你一直在等主人。如果天气特殊可以提醒一下。）';
     }
 
     const rawReply = await callAI(prompt);
-    const { emotion, moodDelta, text } = parseReply(rawReply);
+    const parsed = parseReply(rawReply);
 
-    showSpeech(text);
-    setEmotion(emotion);
-    if (moodDelta !== 0) changeMood(moodDelta);
+    showSpeech(parsed.text);
+    setEmotion(parsed.emotion);
+    if (parsed.moodDelta !== 0) changeMood(parsed.moodDelta);
     pushHistory('assistant', rawReply);
     changeMood(+3);
 
     isWaitingReply = false;
 }
 
-// ===== APK悬浮窗点击入口 =====
-function onPetClicked() {
-    onModelTap();
-}
-
-window.addEventListener('load', () => {
+window.addEventListener('load', function() {
     init();
 });
+
+// ==================== 桌宠面板 ====================
+
+function togglePetPanel() {
+    document.getElementById('pet-panel').classList.toggle('show');
+}
+
+function updatePetSize(val) {
+    document.getElementById('pet-size-value').textContent = val;
+    localStorage.setItem('petSize', val);
+}
+
+document.addEventListener('click', function(e) {
+    const panel = document.getElementById('pet-panel');
+    const btn = document.getElementById('pet-btn');
+    if (panel && !panel.contains(e.target) && e.target !== btn) {
+        panel.classList.remove('show');
+    }
+});
+
+(function() {
+    const saved = localStorage.getItem('petSize');
+    if (saved) {
+        const slider = document.getElementById('pet-size-slider');
+        const display = document.getElementById('pet-size-value');
+        if (slider) slider.value = saved;
+        if (display) display.textContent = saved;
+    }
+})();
 </script>
 </body>
 </html>
+
